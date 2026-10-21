@@ -1,12 +1,25 @@
 [project]
 name = "metergraph"
-version = "0.6.10"
-description = "Fire-and-forget LLM spend capture for Metergraph"
+version = "0.6.11"
+description = "Zero-dependency Python SDK for function-level LLM cost attribution across OpenAI, Anthropic, Gemini, and Vercel AI Gateway."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
-authors = [{ name = "Pioneer Square Labs" }]
-keywords = ["llm", "observability", "openai", "anthropic", "gemini", "vercel-ai-gateway", "cost-tracking"]
+authors = [{ name = "Metergraph" }]
+keywords = [
+    "llm",
+    "llm-cost",
+    "llm-observability",
+    "cost-attribution",
+    "ai-agents",
+    "openai",
+    "anthropic",
+    "gemini",
+    "vercel-ai-sdk",
+    "vercel-ai-gateway",
+    "opentelemetry",
+    "self-hosted",
+]
 classifiers = [
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -16,8 +29,10 @@ dependencies = []
 
 [project.urls]
 Homepage = "https://www.metergraph.dev/"
-Repository = "https://github.com/PioneerSquareLabs/metergraphsdk"
-Issues = "https://github.com/PioneerSquareLabs/metergraphsdk/issues"
+Documentation = "https://github.com/metergraph/metergraphsdk/tree/main/python#readme"
+Repository = "https://github.com/metergraph/metergraphsdk"
+Issues = "https://github.com/metergraph/metergraphsdk/issues"
+"Release notes" = "https://github.com/metergraph/metergraphsdk/releases"
 
 [project.optional-dependencies]
 otel = ["opentelemetry-sdk>=1.30"]

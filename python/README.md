@@ -1,7 +1,17 @@
 # metergraph (Python)
 
-Zero-runtime-dependency capture for OpenAI, Anthropic, Gemini, and Python
-Vercel AI Gateway clients.
+See where your agentic AI application's LLM spend comes from. Attribute usage
+to functions, agents, and workflows without changing provider call sites, then
+send it to Metergraph Cloud or your self-hosted Metergraph server.
+
+[Metergraph](https://www.metergraph.dev/) helps teams understand and optimize
+agentic AI applications. This open-source, zero-runtime-dependency package
+provides function-level LLM cost attribution for OpenAI, Anthropic, Gemini, and
+Python Vercel AI Gateway clients. Paid Metergraph builds on that attribution
+with experimentation and optimization across models, prompts, tools,
+retrieval, context, batching, and caching. This package captures and
+attributes usage; it does not run experiments or optimize your application.
+
 Initialize Metergraph once, then wrap each provider client. `init()` reads the
 token and other omitted options from the environment.
 
@@ -260,7 +270,7 @@ codebase you want instrumented:
 
 ```text
 Instrument this codebase's LLM API costs with the `metergraph` PyPI package
-(https://github.com/PioneerSquareLabs/metergraphsdk): pip install metergraph,
+(https://github.com/metergraph/metergraphsdk): pip install metergraph,
 then wrap every OpenAI()/AsyncOpenAI(), Anthropic()/AsyncAnthropic(), and
 genai.Client() construction in place, e.g. client = metergraph.wrap(OpenAI()).
 OpenAI or Anthropic clients pointed at https://ai-gateway.vercel.sh are Vercel

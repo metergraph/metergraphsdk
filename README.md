@@ -1,6 +1,24 @@
 # Metergraph SDKs
 
-Capture SDKs for [Metergraph](https://github.com/PioneerSquareLabs/metergraph), which tracks LLM costs by application function and trace. Wrap your OpenAI, Anthropic, Gemini, or Python Vercel AI Gateway client—or add Metergraph middleware to a TypeScript Vercel AI SDK language model—and every call is attributed to the function that made it, with token counts (input/output, cache reads, aggregate and TTL-specific cache writes, reasoning), latency, and model. SDK rows contain usage counters, never embedded prices or client-computed cost. Metergraph sends scrubbed request and normalized response content to the hosted service by default; applications can opt out globally or around a sensitive route or trace. The SDKs have no runtime dependencies.
+See where your agentic AI application's LLM spend comes from. Attribute usage to functions, agents, and workflows without changing provider call sites, then send it to Metergraph Cloud or your self-hosted Metergraph server.
+
+[Metergraph](https://www.metergraph.dev/) helps teams understand and optimize
+agentic AI applications. These open-source SDKs provide function-level LLM cost
+attribution. Wrap your OpenAI, Anthropic, Gemini, or Python Vercel AI Gateway
+client, or add Metergraph middleware to a TypeScript Vercel AI SDK language
+model, and every call is attributed to the function that made it, with token
+counts (input/output, cache reads, aggregate and TTL-specific cache writes,
+reasoning), latency, and model. SDK rows contain usage counters, never embedded
+prices or client-computed cost. Metergraph sends scrubbed request and
+normalized response content to the hosted service by default; applications can
+opt out globally or around a sensitive route or trace. The SDKs have no runtime
+dependencies.
+
+Paid Metergraph builds on that attribution with experimentation and
+optimization across models, prompts, tools, retrieval, context, batching, and
+caching. The open-source SDKs and
+[self-hosted server](https://github.com/metergraph/metergraph) capture and
+attribute usage; they do not run experiments or optimize your application.
 
 We recommend keeping content capture enabled because replayable requests and
 responses are what allow Metergraph to evaluate quality and produce
@@ -9,7 +27,7 @@ common secret-bearing fields, supports application-specific redaction, and
 provides global and per-operation opt-outs. If your privacy requirements do not
 permit hosted content capture, [contact Metergraph](mailto:alex@pioneersquarelabs.com)
 about deploying it privately in your VPC. The
-[open-source server](https://github.com/PioneerSquareLabs/metergraph) is also
+[open-source server](https://github.com/metergraph/metergraph) is also
 always available for self-hosting.
 
 | Package | Registry | Source |
@@ -23,7 +41,7 @@ The fastest way to instrument an existing codebase is to paste this into Claude 
 
 ```text
 Instrument this codebase's LLM API costs with Metergraph
-(https://github.com/PioneerSquareLabs/metergraphsdk). It captures per-call
+(https://github.com/metergraph/metergraphsdk). It captures per-call
 token usage (in/out, cached, reasoning), latency, model, scrubbed request, and
 normalized response, attributed to the application function and logical trace
 that made the call. Keep the default content capture enabled so Metergraph can
@@ -51,7 +69,7 @@ only when the deployment owner explicitly chooses metadata-only capture.
    mg.vercelAISDKMiddleware() })` instead of wrapping a provider client.
 3. METERGRAPH_APP_TOKEN is required; the SDK warns and disables capture when
    it is missing. METERGRAPH_INGEST_URL is only needed when
-   self-hosting the server from https://github.com/PioneerSquareLabs/metergraph.
+   self-hosting the server from https://github.com/metergraph/metergraph.
    Document variable names with placeholders in `.env.example`, and put real
    values only in the deployment configuration. Repository identity enables
    repository-level attribution and [MeterGraph Bot](https://github.com/apps/metergraph).
@@ -317,7 +335,7 @@ export METERGRAPH_APP_TOKEN=<token>
 ```
 
 Leave `METERGRAPH_INGEST_URL` unset to use the hosted service, or point it at a
-[self-hosted Metergraph server](https://github.com/PioneerSquareLabs/metergraph).
+[self-hosted Metergraph server](https://github.com/metergraph/metergraph).
 Without a token, capture is off and the SDK emits a warning. Hosted capture
 includes scrubbed request and response content by default because that content
 enables quality evaluation and optimization recommendations. Each field is
