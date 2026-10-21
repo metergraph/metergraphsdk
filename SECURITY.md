@@ -3,7 +3,7 @@
 This repository is the client SDK (`metergraph` on PyPI and npm) — the code
 that runs inside your application and wraps your OpenAI, Anthropic, or Gemini
 client. It does not include the ingest server, price catalog, or dashboard;
-those live in [PioneerSquareLabs/metergraph](https://github.com/PioneerSquareLabs/metergraph),
+those live in [metergraph/metergraph](https://github.com/metergraph/metergraph),
 which has its own security policy covering storage, retention, and
 server-side access control.
 
@@ -16,7 +16,7 @@ support branch yet.
 ## Reporting a Vulnerability
 
 Please report suspected vulnerabilities privately through
-[GitHub Security Advisories](https://github.com/PioneerSquareLabs/metergraphsdk/security/advisories/new)
+[GitHub Security Advisories](https://github.com/metergraph/metergraphsdk/security/advisories/new)
 rather than opening a public issue. Include the affected version, a
 reproduction if you have one, and the impact as you understand it. We'll
 acknowledge new reports and work with you on a fix and coordinated

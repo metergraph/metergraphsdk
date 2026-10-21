@@ -19,6 +19,35 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_ROOT = REPOSITORY_ROOT / "python"
 SOURCE_PACKAGE = PACKAGE_ROOT / "src" / "metergraph"
 
+EXPECTED_VERSION = "0.6.11"
+EXPECTED_SUMMARY = (
+    "Zero-dependency Python SDK for function-level LLM cost attribution across "
+    "major LLM providers and gateways, including OpenAI, Anthropic, Gemini, and "
+    "Vercel AI Gateway."
+)
+EXPECTED_AUTHOR = "Metergraph"
+EXPECTED_KEYWORDS = [
+    "llm",
+    "llm-cost",
+    "llm-observability",
+    "cost-attribution",
+    "ai-agents",
+    "openai",
+    "anthropic",
+    "gemini",
+    "vercel-ai-sdk",
+    "vercel-ai-gateway",
+    "opentelemetry",
+    "self-hosted",
+]
+EXPECTED_PROJECT_URLS = {
+    "Homepage": "https://www.metergraph.dev/",
+    "Documentation": "https://github.com/metergraph/metergraphsdk/tree/main/python#readme",
+    "Repository": "https://github.com/metergraph/metergraphsdk",
+    "Issues": "https://github.com/metergraph/metergraphsdk/issues",
+    "Release notes": "https://github.com/metergraph/metergraphsdk/releases",
+}
+
 
 def run(*args: str, cwd: Path | None = None, env: dict[str, str] | None = None) -> None:
     subprocess.run(args, cwd=cwd, env=env, check=True)
@@ -45,6 +74,16 @@ def assert_artifact_contents(wheel: Path, sdist: Path) -> None:
         metadata = email.message_from_bytes(archive.read(metadata_name))
 
     assert metadata["Name"] == "metergraph"
+    assert metadata["Version"] == EXPECTED_VERSION
+    assert metadata["Summary"] == EXPECTED_SUMMARY
+    assert metadata["Author"] == EXPECTED_AUTHOR
+    assert [
+        keyword.strip() for keyword in metadata["Keywords"].split(",")
+    ] == EXPECTED_KEYWORDS
+    project_urls = dict(
+        value.split(", ", 1) for value in metadata.get_all("Project-URL", [])
+    )
+    assert project_urls == EXPECTED_PROJECT_URLS, project_urls
     assert metadata["Requires-Python"] == ">=3.10"
     runtime_dependencies = [
         value

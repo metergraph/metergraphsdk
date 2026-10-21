@@ -13,6 +13,8 @@ const packageRoot = path.resolve(
   "../..",
 );
 
+const expectedRepository = "https://github.com/metergraph/metergraphsdk";
+
 async function runNode(cwd, filename) {
   await execFileAsync(process.execPath, [filename], { cwd });
 }
@@ -47,13 +49,47 @@ test("published tarball supports CommonJS, ESM, and mixed loading", async () => 
       "tarball must not publish TypeScript sources",
     );
 
+    const tarball = path.join(workspace, packResult.filename);
+    const unpacked = path.join(workspace, "unpacked");
+    await mkdir(unpacked);
+    await execFileAsync("tar", ["-xzf", tarball, "-C", unpacked]);
+    const packedManifest = JSON.parse(
+      await readFile(path.join(unpacked, "package", "package.json"), "utf8"),
+    );
+    assert.equal(packedManifest.version, "0.6.11");
+    assert.equal(
+      packedManifest.description,
+      "Zero-dependency TypeScript SDK for function-level LLM cost attribution across major LLM providers and frameworks, including OpenAI, Anthropic, Gemini, and Vercel AI SDK.",
+    );
+    assert.equal(packedManifest.author, "Metergraph");
+    assert.deepEqual(packedManifest.repository, {
+      type: "git",
+      url: `git+${expectedRepository}.git`,
+      directory: "typescript",
+    });
+    assert.deepEqual(packedManifest.bugs, { url: `${expectedRepository}/issues` });
+    assert.equal(packedManifest.homepage, "https://www.metergraph.dev/");
+    assert.deepEqual(packedManifest.keywords, [
+      "llm",
+      "llm-cost",
+      "llm-observability",
+      "cost-attribution",
+      "ai-agents",
+      "openai",
+      "anthropic",
+      "gemini",
+      "vercel-ai-sdk",
+      "opentelemetry",
+      "self-hosted",
+    ]);
+    assert.deepEqual(packedManifest.dependencies ?? {}, {});
+
     const consumer = path.join(workspace, "consumer");
     await mkdir(consumer);
     await writeFile(
       path.join(consumer, "package.json"),
       JSON.stringify({ name: "metergraph-package-consumer", private: true }),
     );
-    const tarball = path.join(workspace, packResult.filename);
     await execFileAsync(
       "npm",
       [

@@ -1,8 +1,19 @@
 # metergraph (TypeScript)
 
-Zero-runtime-dependency capture for OpenAI, Anthropic, and Gemini clients plus
-provider-independent Vercel AI SDK language models on Node 18+, including AWS
-Lambda. Worker-style `waitUntil` hooks are present but are not part of the v1
+See where your agentic AI application's LLM spend comes from. Attribute usage
+to functions, agents, and workflows without changing provider call sites, then
+send it to Metergraph Cloud or your self-hosted Metergraph server.
+
+[Metergraph](https://www.metergraph.dev/) helps teams understand and optimize
+agentic AI applications. This open-source, zero-runtime-dependency package
+provides function-level LLM cost attribution for OpenAI, Anthropic, and Gemini
+clients plus provider-independent Vercel AI SDK language models. Paid
+Metergraph builds on that attribution with experimentation and optimization
+across models, prompts, tools, retrieval, context, batching, and caching. This
+package captures and attributes usage; it does not run experiments or optimize
+your application.
+
+The package runs on Node 18+, including AWS Lambda. Worker-style `waitUntil` hooks are present but are not part of the v1
 public-package qualification contract.
 
 Metergraph supports OpenAI JavaScript SDK majors 4 through 7. The current
@@ -235,7 +246,7 @@ codebase you want instrumented:
 
 ```text
 Instrument this codebase's LLM API costs with the `metergraph` npm package
-(https://github.com/PioneerSquareLabs/metergraphsdk): npm install metergraph,
+(https://github.com/metergraph/metergraphsdk): npm install metergraph,
 then wrap every new OpenAI(), new Anthropic(), and new GoogleGenAI()
 construction in place, e.g. const client = mg.wrap(new OpenAI()) after
 import * as mg from "metergraph". wrap() returns the same client and
