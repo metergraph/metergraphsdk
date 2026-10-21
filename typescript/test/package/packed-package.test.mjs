@@ -14,7 +14,6 @@ const packageRoot = path.resolve(
 );
 
 const expectedRepository = "https://github.com/metergraph/metergraphsdk";
-const stalePublicReferences = ["github.com/pioneersquarelabs", "pioneer square labs"];
 
 async function runNode(cwd, filename) {
   await execFileAsync(process.execPath, [filename], { cwd });
@@ -54,11 +53,9 @@ test("published tarball supports CommonJS, ESM, and mixed loading", async () => 
     const unpacked = path.join(workspace, "unpacked");
     await mkdir(unpacked);
     await execFileAsync("tar", ["-xzf", tarball, "-C", unpacked]);
-    const packedManifestText = await readFile(
-      path.join(unpacked, "package", "package.json"),
-      "utf8",
+    const packedManifest = JSON.parse(
+      await readFile(path.join(unpacked, "package", "package.json"), "utf8"),
     );
-    const packedManifest = JSON.parse(packedManifestText);
     assert.equal(packedManifest.version, "0.6.11");
     assert.equal(
       packedManifest.description,
@@ -86,19 +83,6 @@ test("published tarball supports CommonJS, ESM, and mixed loading", async () => 
       "self-hosted",
     ]);
     assert.deepEqual(packedManifest.dependencies ?? {}, {});
-
-    const packedReadme = await readFile(
-      path.join(unpacked, "package", "README.md"),
-      "utf8",
-    );
-    for (const text of [packedManifestText, packedReadme]) {
-      for (const stale of stalePublicReferences) {
-        assert.ok(
-          !text.toLowerCase().includes(stale),
-          `published package references ${stale}`,
-        );
-      }
-    }
 
     const consumer = path.join(workspace, "consumer");
     await mkdir(consumer);

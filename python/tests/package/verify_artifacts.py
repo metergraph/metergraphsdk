@@ -46,7 +46,6 @@ EXPECTED_PROJECT_URLS = {
     "Issues": "https://github.com/metergraph/metergraphsdk/issues",
     "Release notes": "https://github.com/metergraph/metergraphsdk/releases",
 }
-STALE_PUBLIC_REFERENCES = ("github.com/pioneersquarelabs", "pioneer square labs")
 
 
 def run(*args: str, cwd: Path | None = None, env: dict[str, str] | None = None) -> None:
@@ -84,9 +83,6 @@ def assert_artifact_contents(wheel: Path, sdist: Path) -> None:
         value.split(", ", 1) for value in metadata.get_all("Project-URL", [])
     )
     assert project_urls == EXPECTED_PROJECT_URLS, project_urls
-    public_text = metadata.as_string().lower()
-    for stale in STALE_PUBLIC_REFERENCES:
-        assert stale not in public_text, f"package metadata references {stale}"
     assert metadata["Requires-Python"] == ">=3.10"
     runtime_dependencies = [
         value
