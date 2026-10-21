@@ -22,7 +22,8 @@ SOURCE_PACKAGE = PACKAGE_ROOT / "src" / "metergraph"
 EXPECTED_VERSION = "0.6.11"
 EXPECTED_SUMMARY = (
     "Zero-dependency Python SDK for function-level LLM cost attribution across "
-    "OpenAI, Anthropic, Gemini, and Vercel AI Gateway."
+    "major LLM providers and gateways, including OpenAI, Anthropic, Gemini, and "
+    "Vercel AI Gateway."
 )
 EXPECTED_AUTHOR = "Metergraph"
 EXPECTED_KEYWORDS = [
