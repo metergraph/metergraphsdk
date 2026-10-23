@@ -1,6 +1,6 @@
 [project]
 name = "metergraph"
-version = "0.6.11"
+version = "0.6.12"
 description = "Zero-dependency Python SDK for function-level LLM cost attribution across major LLM providers and gateways, including OpenAI, Anthropic, Gemini, and Vercel AI Gateway."
 readme = "README.md"
 requires-python = ">=3.10"

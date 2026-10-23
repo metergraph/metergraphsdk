@@ -1,6 +1,6 @@
 {
   "name": "metergraph",
-  "version": "0.6.11",
+  "version": "0.6.12",
   "description": "Zero-dependency TypeScript SDK for function-level LLM cost attribution across major LLM providers and frameworks, including OpenAI, Anthropic, Gemini, and Vercel AI SDK.",
   "type": "module",
   "main": "./dist/index.js",
