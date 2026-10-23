@@ -12,8 +12,22 @@ from typing import Any
 
 
 _UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f-]{27,}\b", re.I)
-_EMAIL = re.compile(r"\b[^\s@]+@[^\s@]+\.[^\s@]+\b")
-_URL = re.compile(r"\bhttps?://\S+")
+# Every pattern here must run in time linear in the text. A request can carry
+# megabytes in one string (an inline image) and this runs inside the wrapped
+# call, holding the GIL. The email pattern used to be quadratic: `[^\s@]+@`
+# rescanned a run with no whitespace or "@" from every word boundary, so a
+# 100 KB base64 image took over a second and each doubling took four times as
+# long. The local part is now capped at 64 characters, the most RFC 5321
+# allows, and the domain commits to its first dot instead of retrying from
+# every dot, so its tail is scanned once. The domain part matches exactly the
+# strings `[^\s@]+\.[^\s@]+\b` did.
+_EMAIL = re.compile(r"\b[^\s@]{1,64}@[^\s@][^\s@.]*\.[^\s@]+\b")
+# Inline images travel as base64 data URLs. Their bytes differ on every call,
+# so for fingerprinting they are a URL, like a remote image is. The media type
+# is bounded and may not hold ":", which a media type never does, so a "data:"
+# that is not a data URL fails within a few characters instead of scanning
+# the rest of the string from every "data:".
+_URL = re.compile(r"\b(?:https?://|data:[^\s,:]{0,255};base64,)\S+")
 _NUMBER = re.compile(r"(?<![A-Za-z])[-+]?\d+(?:\.\d+)?(?![A-Za-z])")
 _LONG_TOKEN = re.compile(r"\b[A-Za-z0-9_-]{24,}\b")
 _SENSITIVE_KEYS = {

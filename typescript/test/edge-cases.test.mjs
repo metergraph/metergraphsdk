@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import test from "node:test";
 
 import { CaptureRuntime } from "../dist/capture.js";
@@ -544,4 +545,77 @@ test("template hash still ignores credential names at any depth", async () => {
     }],
   };
   assert.equal(templateHash({ model: "m", tools: [toolWithSensitiveNames] }), templateHash(without));
+});
+
+test("template hash is pinned for representative requests", async () => {
+  // This hash routes unnamed workloads, so a change to any value here moves
+  // existing traffic to a new workload. Change one only on purpose.
+  const { templateHash } = await import("../dist/template.js");
+  const pinned = [
+    [
+      { model: "gpt-4o", messages: [{ role: "user", content: "Reply to (jane.doe+billing@example.co.uk) about ticket 42." }] },
+      "e1515e7d0143618a",
+    ],
+    [
+      { model: "gpt-4o", messages: [{ role: "user", content: "Owner: bob@example.com; cc <ann@example.org>. Thanks!" }] },
+      "2e23d1c6b3d55cb3",
+    ],
+    [
+      { model: "gpt-4o", messages: [{ role: "user", content: "See https://user@example.com/path?id=7 and https://example.com/x" }] },
+      "df6549839e3b7f36",
+    ],
+    [
+      {
+        model: "claude-3-5-sonnet",
+        system: "Order 1234-5678 for 3f2504e0-4f89-11d3-9a0c-0305e82c3301 sent to a@b.io",
+        messages: [{ role: "user", content: "token sk-abcdefghijklmnopqrstuvwxyz0123 price 19.99 at @handle" }],
+      },
+      "938d33584f011d8f",
+    ],
+    [
+      { model: "gpt-4o", messages: [{ role: "system", content: "You are a helpful assistant." }, { role: "user", content: "hi" }] },
+      "a78c28279eb30bd4",
+    ],
+  ];
+  for (const [request, expected] of pinned) assert.equal(templateHash(request), expected);
+});
+
+test("template hash is linear on long opaque strings", async () => {
+  // The email pattern used to rescan a run with no whitespace or "@" from
+  // every word boundary: a 100 KB base64 image took a third of a second and
+  // each doubling took four times as long, inside the wrapped call. "@"
+  // followed by a long run of dots was worse again, and so is a run of
+  // "data:" that is not a data URL. Each of these now takes milliseconds; the
+  // bound is loose so a slow runner cannot fail it.
+  const { templateHash } = await import("../dist/template.js");
+  const image = randomBytes(300_000).toString("base64");
+  const texts = [
+    image,
+    `data:image/png;base64,${image}`,
+    `a@b.com${".".repeat(100_000)}`,
+    "data:".repeat(200_000),
+  ];
+  for (const text of texts) {
+    const started = process.hrtime.bigint();
+    templateHash({ messages: [{ content: text }] });
+    assert.ok(Number(process.hrtime.bigint() - started) / 1e9 < 1);
+  }
+});
+
+test("template hash ignores inline image bytes", async () => {
+  const { templateHash } = await import("../dist/template.js");
+  const request = (url) => ({
+    model: "gpt-4o",
+    messages: [{
+      role: "user",
+      content: [
+        { type: "text", text: "Describe this screenshot." },
+        { type: "image_url", image_url: { url } },
+      ],
+    }],
+  });
+  const inline = (bytes) => `data:image/png;base64,${Buffer.from(bytes).toString("base64")}`;
+  const first = templateHash(request(inline(Array.from({ length: 4096 }, (_, i) => i % 256))));
+  assert.equal(first, templateHash(request(inline(Array.from({ length: 4096 }, (_, i) => 255 - (i % 256))))));
+  assert.equal(first, templateHash(request("https://images.example.com/shot.png")));
 });
