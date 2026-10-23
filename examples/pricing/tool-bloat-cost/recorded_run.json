@@ -1,0 +1,1249 @@
+{
+ "model": "claude-opus-5-5",
+ "scenarios": {
+  "2 tools, no caching": [
+   [
+    {
+     "id": "msg_recorded_1",
+     "content": [
+      {
+       "id": "toolu_recorded_1_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "city": "Lisbon"
+       },
+       "name": "get_weather",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 547,
+      "output_tokens": 52,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_2",
+     "content": [
+      {
+       "id": "toolu_recorded_2_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "celsius": 21.0
+       },
+       "name": "celsius_to_fahrenheit",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 607,
+      "output_tokens": 60,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_3",
+     "content": [
+      {
+       "text": "It's 69.8\u00b0F (21\u00b0C) in Lisbon right now.",
+       "type": "text"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "end_turn",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 675,
+      "output_tokens": 24,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    }
+   ],
+   [
+    {
+     "id": "msg_recorded_4",
+     "content": [
+      {
+       "id": "toolu_recorded_4_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "city": "Lisbon"
+       },
+       "name": "get_weather",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 547,
+      "output_tokens": 52,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_5",
+     "content": [
+      {
+       "id": "toolu_recorded_5_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "celsius": 21.0
+       },
+       "name": "celsius_to_fahrenheit",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 607,
+      "output_tokens": 60,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_6",
+     "content": [
+      {
+       "text": "It's 69.8\u00b0F (21\u00b0C) in Lisbon right now.",
+       "type": "text"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "end_turn",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 675,
+      "output_tokens": 24,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    }
+   ],
+   [
+    {
+     "id": "msg_recorded_7",
+     "content": [
+      {
+       "id": "toolu_recorded_7_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "city": "Lisbon"
+       },
+       "name": "get_weather",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 547,
+      "output_tokens": 52,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_8",
+     "content": [
+      {
+       "id": "toolu_recorded_8_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "celsius": 21.0
+       },
+       "name": "celsius_to_fahrenheit",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 607,
+      "output_tokens": 60,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_9",
+     "content": [
+      {
+       "text": "It's 69.8\u00b0F (21\u00b0C) in Lisbon right now.",
+       "type": "text"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "end_turn",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 675,
+      "output_tokens": 24,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    }
+   ]
+  ],
+  "2 tools, caching": [
+   [
+    {
+     "id": "msg_recorded_10",
+     "content": [
+      {
+       "id": "toolu_recorded_10_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "city": "Lisbon"
+       },
+       "name": "get_weather",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 547,
+      "output_tokens": 52,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_11",
+     "content": [
+      {
+       "id": "toolu_recorded_11_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "celsius": 21.0
+       },
+       "name": "celsius_to_fahrenheit",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 607,
+      "output_tokens": 60,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_12",
+     "content": [
+      {
+       "text": "It's 69.8\u00b0F (21\u00b0C) in Lisbon right now.",
+       "type": "text"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "end_turn",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 675,
+      "output_tokens": 24,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    }
+   ],
+   [
+    {
+     "id": "msg_recorded_13",
+     "content": [
+      {
+       "id": "toolu_recorded_13_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "city": "Lisbon"
+       },
+       "name": "get_weather",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 547,
+      "output_tokens": 52,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_14",
+     "content": [
+      {
+       "id": "toolu_recorded_14_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "celsius": 21.0
+       },
+       "name": "celsius_to_fahrenheit",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 607,
+      "output_tokens": 60,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_15",
+     "content": [
+      {
+       "text": "It's 69.8\u00b0F (21\u00b0C) in Lisbon right now.",
+       "type": "text"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "end_turn",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 675,
+      "output_tokens": 24,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    }
+   ],
+   [
+    {
+     "id": "msg_recorded_16",
+     "content": [
+      {
+       "id": "toolu_recorded_16_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "city": "Lisbon"
+       },
+       "name": "get_weather",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 547,
+      "output_tokens": 52,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_17",
+     "content": [
+      {
+       "id": "toolu_recorded_17_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "celsius": 21.0
+       },
+       "name": "celsius_to_fahrenheit",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 607,
+      "output_tokens": 60,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_18",
+     "content": [
+      {
+       "text": "It's 69.8\u00b0F (21\u00b0C) in Lisbon right now.",
+       "type": "text"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "end_turn",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 675,
+      "output_tokens": 24,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    }
+   ]
+  ],
+  "17 tools, no caching": [
+   [
+    {
+     "id": "msg_recorded_19",
+     "content": [
+      {
+       "id": "toolu_recorded_19_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "city": "Lisbon"
+       },
+       "name": "get_weather",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 2659,
+      "output_tokens": 52,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_20",
+     "content": [
+      {
+       "id": "toolu_recorded_20_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "celsius": 21.0
+       },
+       "name": "celsius_to_fahrenheit",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 2719,
+      "output_tokens": 60,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_21",
+     "content": [
+      {
+       "text": "It's 69.8\u00b0F (21\u00b0C) in Lisbon right now.",
+       "type": "text"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "end_turn",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 2787,
+      "output_tokens": 24,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    }
+   ],
+   [
+    {
+     "id": "msg_recorded_22",
+     "content": [
+      {
+       "id": "toolu_recorded_22_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "city": "Lisbon"
+       },
+       "name": "get_weather",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 2659,
+      "output_tokens": 52,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_23",
+     "content": [
+      {
+       "id": "toolu_recorded_23_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "celsius": 21.0
+       },
+       "name": "celsius_to_fahrenheit",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 2719,
+      "output_tokens": 60,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_24",
+     "content": [
+      {
+       "text": "It's 69.8\u00b0F (21\u00b0C) in Lisbon right now.",
+       "type": "text"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "end_turn",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 2787,
+      "output_tokens": 24,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    }
+   ],
+   [
+    {
+     "id": "msg_recorded_25",
+     "content": [
+      {
+       "id": "toolu_recorded_25_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "city": "Lisbon"
+       },
+       "name": "get_weather",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 2659,
+      "output_tokens": 52,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_26",
+     "content": [
+      {
+       "id": "toolu_recorded_26_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "celsius": 21.0
+       },
+       "name": "celsius_to_fahrenheit",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 2719,
+      "output_tokens": 60,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_27",
+     "content": [
+      {
+       "text": "It's currently 69.8\u00b0F (21\u00b0C) in Lisbon.",
+       "type": "text"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "end_turn",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 2787,
+      "output_tokens": 24,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    }
+   ]
+  ],
+  "17 tools, caching": [
+   [
+    {
+     "id": "msg_recorded_28",
+     "content": [
+      {
+       "id": "toolu_recorded_28_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "city": "Lisbon"
+       },
+       "name": "get_weather",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 2559
+      },
+      "cache_creation_input_tokens": 2559,
+      "cache_read_input_tokens": 0,
+      "inference_geo": "global",
+      "input_tokens": 100,
+      "output_tokens": 52,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_29",
+     "content": [
+      {
+       "id": "toolu_recorded_29_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "celsius": 21.0
+       },
+       "name": "celsius_to_fahrenheit",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 2559,
+      "inference_geo": "global",
+      "input_tokens": 160,
+      "output_tokens": 60,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_30",
+     "content": [
+      {
+       "text": "It's 69.8\u00b0F (21\u00b0C) in Lisbon right now.",
+       "type": "text"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "end_turn",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 2559,
+      "inference_geo": "global",
+      "input_tokens": 228,
+      "output_tokens": 24,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    }
+   ],
+   [
+    {
+     "id": "msg_recorded_31",
+     "content": [
+      {
+       "id": "toolu_recorded_31_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "city": "Lisbon"
+       },
+       "name": "get_weather",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 2559,
+      "inference_geo": "global",
+      "input_tokens": 100,
+      "output_tokens": 52,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_32",
+     "content": [
+      {
+       "id": "toolu_recorded_32_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "celsius": 21.0
+       },
+       "name": "celsius_to_fahrenheit",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 2559,
+      "inference_geo": "global",
+      "input_tokens": 160,
+      "output_tokens": 60,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_33",
+     "content": [
+      {
+       "text": "It's 69.8\u00b0F (21\u00b0C) in Lisbon right now.",
+       "type": "text"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "end_turn",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 2559,
+      "inference_geo": "global",
+      "input_tokens": 228,
+      "output_tokens": 24,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    }
+   ],
+   [
+    {
+     "id": "msg_recorded_34",
+     "content": [
+      {
+       "id": "toolu_recorded_34_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "city": "Lisbon"
+       },
+       "name": "get_weather",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 2559,
+      "inference_geo": "global",
+      "input_tokens": 100,
+      "output_tokens": 52,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_35",
+     "content": [
+      {
+       "id": "toolu_recorded_35_0",
+       "caller": {
+        "type": "direct"
+       },
+       "input": {
+        "celsius": 21.0
+       },
+       "name": "celsius_to_fahrenheit",
+       "type": "tool_use"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "tool_use",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 2559,
+      "inference_geo": "global",
+      "input_tokens": 160,
+      "output_tokens": 60,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    },
+    {
+     "id": "msg_recorded_36",
+     "content": [
+      {
+       "text": "It's 69.8\u00b0F (21\u00b0C) in Lisbon right now.",
+       "type": "text"
+      }
+     ],
+     "model": "claude-opus-5-5",
+     "role": "assistant",
+     "stop_reason": "end_turn",
+     "type": "message",
+     "usage": {
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 2559,
+      "inference_geo": "global",
+      "input_tokens": 228,
+      "output_tokens": 24,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "speed": "standard"
+     }
+    }
+   ]
+  ]
+ }
+}
