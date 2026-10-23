@@ -84,10 +84,21 @@ function normalized(value: unknown): unknown {
     );
   }
   if (typeof value !== "string") return value;
+  // Every pattern here must run in time linear in the text: a request can
+  // carry megabytes in one string (an inline image) and this runs inside the
+  // wrapped call. The email local part is capped at 64 characters, the most
+  // RFC 5321 allows, and the domain commits to its first dot instead of
+  // retrying from every dot. It matches the same strings as the former
+  // `[^\s@]+@[^\s@]+\.[^\s@]+\b`, which rescanned a run with no whitespace
+  // or "@" from every word boundary and was quadratic on a base64 image.
+  // Inline images differ on every call, so for fingerprinting they are a URL.
+  // The data URL's media type is bounded and may not hold ":", which a media
+  // type never does, so a "data:" that is not a data URL fails within a few
+  // characters instead of scanning the rest of the string from every "data:".
   return value
     .replace(/\b[0-9a-f]{8}-[0-9a-f-]{27,}\b/gi, "<uuid>")
-    .replace(/\b[^\s@]+@[^\s@]+\.[^\s@]+\b/g, "<email>")
-    .replace(/\bhttps?:\/\/\S+/g, "<url>")
+    .replace(/\b[^\s@]{1,64}@[^\s@][^\s@.]*\.[^\s@]+\b/g, "<email>")
+    .replace(/\b(?:https?:\/\/|data:[^\s,:]{0,255};base64,)\S+/g, "<url>")
     .replace(/\b[A-Za-z0-9_-]{24,}\b/g, "<token>")
     .replace(/(^|[^A-Za-z])[-+]?\d+(?:\.\d+)?(?=$|[^A-Za-z])/g, "$1<n>")
     .replace(/\s+/g, " ")

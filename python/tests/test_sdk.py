@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import gzip
 import json
 import logging
 import os
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
@@ -15,7 +17,7 @@ from metergraph import _capture
 from metergraph._capture import Options, Runtime
 from metergraph._config import ConfigPoller, choose_model
 from metergraph._failure_log import FailureLogger
-from metergraph._template import template_hash
+from metergraph._template import _normalize_text, template_hash
 from metergraph._transport import MAX_BATCH_BYTES, Writer
 
 
@@ -1739,3 +1741,123 @@ def test_a_named_route_is_declared_explicit():
         (None, None),
     ]
     _capture.set_runtime(None)
+
+
+def test_template_hash_is_pinned_for_representative_requests():
+    # This hash routes unnamed workloads, so a change to any value here moves
+    # existing traffic to a new workload. Change one only on purpose.
+    pinned = [
+        (
+            {
+                "model": "gpt-4o",
+                "messages": [{
+                    "role": "user",
+                    "content": "Reply to (jane.doe+billing@example.co.uk) about ticket 42.",
+                }],
+            },
+            "315b237a62f05992f2fd9119a7c91f84d9e6b984b403bf2c3bded37cae458ae6",
+        ),
+        (
+            {
+                "model": "gpt-4o",
+                "messages": [{
+                    "role": "user",
+                    "content": "Owner: bob@example.com; cc <ann@example.org>. Thanks!",
+                }],
+            },
+            "323894f3eff4dc55648c01e9adafa1b78803aba6d4202ffe7dc9910eb40f41c2",
+        ),
+        (
+            {
+                "model": "gpt-4o",
+                "messages": [{
+                    "role": "user",
+                    "content": "See https://user@example.com/path?id=7 and https://example.com/x",
+                }],
+            },
+            "e1c2e33a77afbd30fb40d6bbb62b2557340f4a382cf69a0f2bae216a122d27a0",
+        ),
+        (
+            {
+                "model": "claude-3-5-sonnet",
+                "system": "Order 1234-5678 for 3f2504e0-4f89-11d3-9a0c-0305e82c3301 sent to a@b.io",
+                "messages": [{
+                    "role": "user",
+                    "content": "token sk-abcdefghijklmnopqrstuvwxyz0123 price 19.99 at @handle",
+                }],
+            },
+            "c9180fc38cca13386704b6ffc11cef21bb2f8fcc3f8404d0936dbe909c27a5fc",
+        ),
+        (
+            {
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": "hi"},
+                ],
+            },
+            "d4b9e2317debf1b2fc375fe91ab543722e828548ac4455b2aed7f52bbee1e164",
+        ),
+    ]
+    for request, expected in pinned:
+        assert template_hash(request) == expected
+
+
+def test_normalize_text_keeps_email_behaviour():
+    assert (
+        _normalize_text("Reply to (jane.doe+billing@example.co.uk) now")
+        == "Reply to (<email>) now"
+    )
+    assert (
+        _normalize_text("Owner: bob@example.com; cc <ann@example.org>.")
+        == "Owner: <email>; cc <<email>>."
+    )
+    assert (
+        _normalize_text("not an email: foo@bar or @handle or a@.com")
+        == "not an email: foo@bar or @handle or a@.com"
+    )
+
+
+def test_normalize_text_is_linear_on_long_opaque_strings():
+    # The email pattern used to rescan a run with no whitespace or "@" from
+    # every word boundary: a 100 KB base64 image took over a second and each
+    # doubling took four times as long, inside the wrapped call. "@" followed
+    # by a long run of dots was worse again, and so is a run of "data:" that
+    # is not a data URL. Each of these now takes milliseconds; the bound is
+    # loose so a slow runner cannot fail it.
+    image = base64.b64encode(os.urandom(300_000)).decode()
+    for text in (
+        image,
+        "data:image/png;base64," + image,
+        "a@b.com" + "." * 100_000,
+        "data:" * 200_000,
+    ):
+        started = time.perf_counter()
+        _normalize_text(text)
+        assert time.perf_counter() - started < 1.0
+
+
+def test_template_hash_ignores_inline_image_bytes():
+    def request(url: str) -> dict:
+        return {
+            "model": "gpt-4o",
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Describe this screenshot."},
+                    {"type": "image_url", "image_url": {"url": url}},
+                ],
+            }],
+        }
+
+    def inline(image: bytes) -> str:
+        return "data:image/png;base64," + base64.b64encode(image).decode()
+
+    first = template_hash(request(inline(bytes(range(256)) * 16)))
+    assert first == template_hash(request(inline(bytes(reversed(range(256))) * 16)))
+    assert first == template_hash(request("https://images.example.com/shot.png"))
+    # Only base64 data URLs are opaque bytes; other data URLs are text as before.
+    assert (
+        _normalize_text("data:text/plain;charset=utf-8;base64,aGk= and data:text/plain,hi")
+        == "<url> and data:text/plain,hi"
+    )
