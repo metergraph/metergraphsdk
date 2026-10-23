@@ -28,6 +28,7 @@ events while keeping MeterGraph running.
 | `integrations/frameworks/vercel-ai/` | Vercel AI SDK middleware patterns |
 | `integrations/telemetry/` | Langfuse, LiteLLM, Phoenix, and Bedrock/Azure OpenTelemetry |
 | `execution/batch-first/` | Opt-in Batch API with a deadline and direct fallback |
+| `pricing/agent-cost-budget/` | Price each response in-process and stop an agent at a budget. Nothing required: runs offline |
 
 ## Manual route grouping
 
@@ -83,6 +84,13 @@ wrap an ordinary OpenAI client pointed at OpenRouter. `https://openrouter.ai`
 is auto-detected; a trusted custom domain uses the `gateway="openrouter"`
 override. Each README explains requested versus served model, reported versus
 catalog cost, final streaming usage, and the BYOK limitation.
+
+## Pricing responses in your code
+
+[`pricing/agent-cost-budget/`](pricing/agent-cost-budget/) prices each model
+response in-process with `metergraph-core`'s `cost_from_response` and stops a
+tool-using agent when its running total reaches a budget. It needs no
+MeterGraph server and no API key; with `ANTHROPIC_API_KEY` it calls the API.
 
 ## Batch-first execution
 
