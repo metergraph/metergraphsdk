@@ -56,7 +56,7 @@ test("published tarball supports CommonJS, ESM, and mixed loading", async () => 
     const packedManifest = JSON.parse(
       await readFile(path.join(unpacked, "package", "package.json"), "utf8"),
     );
-    assert.equal(packedManifest.version, "0.6.11");
+    assert.equal(packedManifest.version, "0.6.12");
     assert.equal(
       packedManifest.description,
       "Zero-dependency TypeScript SDK for function-level LLM cost attribution across major LLM providers and frameworks, including OpenAI, Anthropic, Gemini, and Vercel AI SDK.",

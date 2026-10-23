@@ -19,7 +19,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_ROOT = REPOSITORY_ROOT / "python"
 SOURCE_PACKAGE = PACKAGE_ROOT / "src" / "metergraph"
 
-EXPECTED_VERSION = "0.6.11"
+EXPECTED_VERSION = "0.6.12"
 EXPECTED_SUMMARY = (
     "Zero-dependency Python SDK for function-level LLM cost attribution across "
     "major LLM providers and gateways, including OpenAI, Anthropic, Gemini, and "
