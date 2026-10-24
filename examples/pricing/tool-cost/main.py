@@ -1,4 +1,4 @@
-"""Does a bloated tool list cost money, and does prompt caching fix it?
+"""What do tools a task never uses cost, with and without prompt caching?
 
 Runs one small agent task four ways: with only the two tools it needs or with
 fifteen more it never uses, each with prompt caching off and on. Every
@@ -170,10 +170,10 @@ def report(totals: dict[str, Totals]) -> None:
             f"{row.cache_read:>12}{row.output:>8}{'$' + format(row.cost, '.6f'):>12}"
         )
     for caching in ("no caching", "caching"):
-        lean, bloated = totals[f"2 tools, {caching}"], totals[f"17 tools, {caching}"]
-        extra = bloated.cost - lean.cost
-        share = extra / bloated.cost * 100 if bloated.cost else Decimal(0)
-        print(f"15 unused tools, {caching}: ${extra:.6f} extra ({share:.0f}% of the bloated total)")
+        two, seventeen = totals[f"2 tools, {caching}"], totals[f"17 tools, {caching}"]
+        extra = seventeen.cost - two.cost
+        share = extra / seventeen.cost * 100 if seventeen.cost else Decimal(0)
+        print(f"15 unused tools, {caching}: ${extra:.6f} extra ({share:.0f}% of the 17-tool total)")
 
 
 def record(client: Any, model: str) -> dict[str, list[list[Message]]]:

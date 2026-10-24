@@ -71,7 +71,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install "metergraph-core>=0.7.1,<0.8" anthropic pytest
-      - run: pytest examples/pricing/tool-bloat-cost/test_tool_bloat_cost_example.py -q
+      - run: pytest examples/pricing/tool-cost/test_tool_cost_example.py -q
 
   typescript:
     runs-on: ubuntu-latest

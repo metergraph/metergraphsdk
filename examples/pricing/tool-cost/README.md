@@ -1,4 +1,4 @@
-# Tool bloat and prompt caching
+# Tool cost and prompt caching
 
 Agents often carry more tools than a given task needs. Does a long tool list
 cost money on every call, and does prompt caching take that cost away? This
@@ -22,8 +22,8 @@ scenario               calls   input  cache write  cache read  output        cos
 2 tools, caching           9    5487            0           0     408   $0.030108
 17 tools, no caching       9   24495            0           0     408   $0.106140
 17 tools, caching          9    1464         2559       20472     408   $0.030905
-15 unused tools, no caching: $0.076032 extra (72% of the bloated total)
-15 unused tools, caching: $0.000797 extra (3% of the bloated total)
+15 unused tools, no caching: $0.076032 extra (72% of the 17-tool total)
+15 unused tools, caching: $0.000797 extra (3% of the 17-tool total)
 ```
 
 What it shows:
@@ -31,12 +31,12 @@ What it shows:
 - **Without caching, unused tools are paid for on every call.** The 15 extra
   tool definitions add about 2,100 input tokens to each request, and an agent
   sends the whole tool list again on every turn. Here that is 72% of the
-  bloated run's cost.
+  17-tool run's cost.
 - **With caching, they cost little, but not nothing.** The tool list is written
   to the cache once, at 1.25 times the input price, then read on every later
   call at a twentieth of it on Claude Opus 5.5 (a tenth on most other models).
-  The bloated run with caching costs about the same as the lean run without
-  it.
+  The 17-tool run with caching costs about the same as the 2-tool run
+  without it.
 - **A short prompt may not cache at all.** The 2-tool prompt is under the
   model's minimum cacheable length, so `cache_control` changed nothing: no
   cache write, no cache read, the same cost. The minimum depends on the model,
@@ -70,7 +70,7 @@ definitions and the system prompt because tools come first in a request.
 
 ```bash
 pip install metergraph-core anthropic
-python examples/pricing/tool-bloat-cost/main.py
+python examples/pricing/tool-cost/main.py
 ```
 
 Without `ANTHROPIC_API_KEY` it replays `recorded_run.json` and prices it with

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from metergraph_core import cost_from_response, load_catalog
 
-_spec = importlib.util.spec_from_file_location("tool_bloat_cost_example", Path(__file__).with_name("main.py"))
+_spec = importlib.util.spec_from_file_location("tool_cost_example", Path(__file__).with_name("main.py"))
 assert _spec is not None and _spec.loader is not None
 example = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(example)
@@ -32,17 +32,17 @@ def test_each_total_is_the_sum_of_its_priced_responses():
 
 
 def test_unused_tools_cost_without_caching_and_little_with_it():
-    lean, bloated = TOTALS["2 tools, no caching"], TOTALS["17 tools, no caching"]
-    cached_lean, cached_bloated = TOTALS["2 tools, caching"], TOTALS["17 tools, caching"]
+    two, seventeen = TOTALS["2 tools, no caching"], TOTALS["17 tools, no caching"]
+    cached_two, cached_seventeen = TOTALS["2 tools, caching"], TOTALS["17 tools, caching"]
 
-    assert bloated.cost > lean.cost * 2
-    # The bloated prefix is cached once and read on every later call.
-    assert cached_bloated.cache_write > 0 and cached_bloated.cache_read > cached_bloated.cache_write
-    assert cached_bloated.cost < bloated.cost / 2
+    assert seventeen.cost > two.cost * 2
+    # The 17-tool prefix is cached once and read on every later call.
+    assert cached_seventeen.cache_write > 0 and cached_seventeen.cache_read > cached_seventeen.cache_write
+    assert cached_seventeen.cost < seventeen.cost / 2
     # The 2-tool prefix is under the model's minimum cacheable length, so
     # asking for caching changes nothing.
-    assert cached_lean.cache_write == cached_lean.cache_read == 0
-    assert cached_lean.cost == lean.cost
+    assert cached_two.cache_write == cached_two.cache_read == 0
+    assert cached_two.cost == two.cost
 
 
 def test_tools_return_synthetic_values():
