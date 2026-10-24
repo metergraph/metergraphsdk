@@ -63,6 +63,16 @@ jobs:
       - run: pip install -e "python[otel]" pytest
       - run: pytest examples/integrations/telemetry/langfuse/python/test_langfuse_example.py -q
 
+  python-pricing-example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "metergraph-core>=0.7.1,<0.8" anthropic pytest
+      - run: pytest examples/pricing/tool-cost/test_tool_cost_example.py -q
+
   typescript:
     runs-on: ubuntu-latest
     strategy:
