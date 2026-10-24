@@ -1,20 +1,29 @@
 # Tool cost and prompt caching
 
-Agents often carry more tools than a given task needs. Does a long tool list
-cost money on every call, and does prompt caching take that cost away? This
-example measures it instead of guessing.
+This example measures what tool definitions a task never uses add to the cost
+of an agent, with prompt caching off and on.
 
-It runs one small agent task ("What is the temperature in Lisbon, in
-Fahrenheit?") four ways: with only the 2 tools it needs, or with 15 more it
-never calls, each with prompt caching off and on. Each scenario runs 3 times.
-Every response is priced in-process with
+It runs one agent task ("What is the temperature in Lisbon right now, in
+Fahrenheit?") four ways: with the 2 tools it needs, or with those 2 plus 15
+it never calls, each with prompt caching off and on. Each scenario runs 3
+times. Every response is priced with
 [`metergraph-core`](https://pypi.org/project/metergraph-core/)'s
 `cost_from_response`, and the totals are printed side by side.
 
-## Result
+## Run it
 
-Recorded on Claude Opus 5.5 at effort `low` (`recorded_run.json`), priced with
-the catalog in metergraph-core 0.7.1:
+```bash
+pip install metergraph-core anthropic
+export ANTHROPIC_API_KEY=...
+python examples/pricing/tool-cost/main.py
+```
+
+It makes about 36 requests to Claude Opus 5.5 at effort `low`. The run below
+cost about $0.20. `--model` selects another model.
+
+## Output from one run
+
+Claude Opus 5.5, 23 October 2026, priced with metergraph-core 0.7.1:
 
 ```text
 scenario               calls   input  cache write  cache read  output        cost
@@ -26,58 +35,40 @@ scenario               calls   input  cache write  cache read  output        cos
 15 unused tools, caching: $0.000797 extra (3% of the 17-tool total)
 ```
 
-What it shows:
-
-- **Without caching, unused tools are paid for on every call.** The 15 extra
-  tool definitions add about 2,100 input tokens to each request, and an agent
-  sends the whole tool list again on every turn. Here that is 72% of the
+- **Without caching, every call pays for every tool definition.** The 15
+  unused tools add about 2,100 input tokens to each request, and an agent
+  sends the tool list again on every turn. In this run they are 72% of the
   17-tool run's cost.
-- **With caching, they cost little, but not nothing.** The tool list is written
-  to the cache once, at 1.25 times the input price, then read on every later
-  call at a twentieth of it on Claude Opus 5.5 (a tenth on most other models).
-  The 17-tool run with caching costs about the same as the 2-tool run
+- **With caching, the tool definitions are written to the cache once and read
+  on later calls.** The write costs 1.25 times the input price. A read costs a
+  twentieth of it on Claude Opus 5.5 and a tenth on most other models. In this
+  run the 17-tool run with caching costs about the same as the 2-tool run
   without it.
-- **A short prompt may not cache at all.** The 2-tool prompt is under the
-  model's minimum cacheable length, so `cache_control` changed nothing: no
-  cache write, no cache read, the same cost. The minimum depends on the model,
-  and the API does not return an error, so check `cache_read_input_tokens`.
-- **Caching only helps while the tool list stays the same.** Tools come first in
-  the cached prefix, so adding, removing or reordering a tool starts the cache
-  over. Trimming the list per request and caching it work against each other.
+- **The 2-tool prompt was too short to cache.** Requests below the model's
+  minimum cacheable length are processed without caching, and the response
+  reports `cache_creation_input_tokens: 0`. The minimum depends on the model:
+  Claude Haiku 4.5 needs 4,096 tokens, so on that model even the 17-tool
+  prompt here may not cache.
+- **A change to the tool list starts the cache over.** Tool definitions come
+  first in the cached prefix, so adding, removing or reordering a tool
+  invalidates the cache.
 
-Your figures depend on the model, your tools, how many turns a task takes, and
-how often the cache goes cold: the default cache lives 5 minutes after its last
+Results depend on the model, the tools, the number of turns per task, and how
+often the cache expires. The default cache expires 5 minutes after its last
 use.
 
-## What the example adds
+## How it works
 
-Open [`main.py`](main.py). The agent loop is ordinary Anthropic tool-use code.
-The pricing is one call per response:
+[`main.py`](main.py) is an ordinary Anthropic tool-use loop. Caching is one
+`cache_control` breakpoint on the system prompt, which covers the tool
+definitions and the system prompt because tools come first in a request. Each
+response is priced with one call:
 
 ```python
 result = cost_from_response("anthropic", response, catalog=catalog)
 ```
 
 It reads the model and usage from the response, including cache writes and
-reads, and returns the cost, its breakdown and the catalog price row it used.
-The same call prices OpenAI, Gemini and Bedrock Converse responses; see the
+reads, and returns the cost, its breakdown and the catalog price it used. The
+same call prices OpenAI, Gemini and Bedrock Converse responses; see the
 [`metergraph-core` README](https://github.com/metergraph/metergraph/tree/main/core#costing-a-provider-response).
-
-Caching is one breakpoint after the system prompt, which covers the tool
-definitions and the system prompt because tools come first in a request.
-
-## Run it
-
-```bash
-pip install metergraph-core anthropic
-python examples/pricing/tool-cost/main.py
-```
-
-Without `ANTHROPIC_API_KEY` it replays `recorded_run.json` and prices it with
-your installed catalog, so it runs offline and costs nothing.
-
-With `ANTHROPIC_API_KEY` set it makes the calls itself: 4 scenarios times 3
-runs, about 36 requests. On Claude Opus 5.5 the recorded run cost about $0.20.
-`--model` picks another model, and `--record` saves the run over
-`recorded_run.json`. On a model with a higher minimum cacheable length, such as
-Claude Haiku 4.5 (4,096 tokens), even the 17-tool prompt may not cache.

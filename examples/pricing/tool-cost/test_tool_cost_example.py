@@ -1,48 +1,27 @@
+"""Checks the example's setup without calling the API."""
+
 from __future__ import annotations
 
 import importlib.util
-from decimal import Decimal
 from pathlib import Path
-
-from metergraph_core import cost_from_response, load_catalog
 
 _spec = importlib.util.spec_from_file_location("tool_cost_example", Path(__file__).with_name("main.py"))
 assert _spec is not None and _spec.loader is not None
 example = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(example)
 
-CATALOG = load_catalog()
-RECORDED = example.load(example.RECORDING)
-TOTALS = example.price(RECORDED, CATALOG)
 
-
-def test_the_recording_covers_every_scenario():
-    assert list(RECORDED) == list(example.SCENARIOS)
-    for runs in RECORDED.values():
-        assert len(runs) == example.RUNS
-        for run in runs:
-            assert run[-1].stop_reason == "end_turn"
-
-
-def test_each_total_is_the_sum_of_its_priced_responses():
-    for scenario, runs in RECORDED.items():
-        results = [cost_from_response("anthropic", response, catalog=CATALOG) for run in runs for response in run]
-        assert all(result.status == "priced" for result in results)
-        assert TOTALS[scenario].cost == sum((result.cost for result in results), Decimal(0))
-
-
-def test_unused_tools_cost_without_caching_and_little_with_it():
-    two, seventeen = TOTALS["2 tools, no caching"], TOTALS["17 tools, no caching"]
-    cached_two, cached_seventeen = TOTALS["2 tools, caching"], TOTALS["17 tools, caching"]
-
-    assert seventeen.cost > two.cost * 2
-    # The 17-tool prefix is cached once and read on every later call.
-    assert cached_seventeen.cache_write > 0 and cached_seventeen.cache_read > cached_seventeen.cache_write
-    assert cached_seventeen.cost < seventeen.cost / 2
-    # The 2-tool prefix is under the model's minimum cacheable length, so
-    # asking for caching changes nothing.
-    assert cached_two.cache_write == cached_two.cache_read == 0
-    assert cached_two.cost == two.cost
+def test_scenarios_differ_only_in_tool_count_and_caching():
+    assert {name: (len(tools), caching) for name, (tools, caching) in example.SCENARIOS.items()} == {
+        "2 tools, no caching": (2, False),
+        "2 tools, caching": (2, True),
+        "17 tools, no caching": (17, False),
+        "17 tools, caching": (17, True),
+    }
+    for tools, _ in example.SCENARIOS.values():
+        assert tools[:2] == example.NEEDED_TOOLS
+    names = [tool["name"] for tool in example.NEEDED_TOOLS + example.UNUSED_TOOLS]
+    assert len(names) == len(set(names))
 
 
 def test_tools_return_synthetic_values():

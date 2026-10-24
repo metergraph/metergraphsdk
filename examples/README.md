@@ -28,7 +28,7 @@ events while keeping MeterGraph running.
 | `integrations/frameworks/vercel-ai/` | Vercel AI SDK middleware patterns |
 | `integrations/telemetry/` | Langfuse, LiteLLM, Phoenix, and Bedrock/Azure OpenTelemetry |
 | `execution/batch-first/` | Opt-in Batch API with a deadline and direct fallback |
-| `pricing/tool-cost/` | Measure what unused tools cost, with and without prompt caching. Nothing required: replays a recorded run |
+| `pricing/tool-cost/` | `ANTHROPIC_API_KEY`. Measures what unused tool definitions cost, with and without prompt caching |
 
 ## Manual route grouping
 
@@ -87,11 +87,10 @@ catalog cost, final streaming usage, and the BYOK limitation.
 
 ## Pricing responses in your code
 
-[`pricing/tool-cost/`](pricing/tool-cost/) runs one agent task
-with 2 tools and with 17, each with prompt caching off and on, and prices
-every response in-process with `metergraph-core`'s `cost_from_response`. It
-shows what unused tools cost on every call and how much caching takes away.
-It replays a recorded run without an API key.
+[`pricing/tool-cost/`](pricing/tool-cost/) runs one agent task with 2 tools
+and with 17, each with prompt caching off and on, and prices every response
+with `metergraph-core`'s `cost_from_response`. Its README includes the output
+of one run.
 
 ## Batch-first execution
 

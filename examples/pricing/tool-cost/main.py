@@ -2,23 +2,18 @@
 
 Runs one small agent task four ways: with only the two tools it needs or with
 fifteen more it never uses, each with prompt caching off and on. Every
-response is priced in-process with metergraph-core's cost_from_response, and
-the totals are printed side by side.
-
-Without ANTHROPIC_API_KEY it replays recorded_run.json, a live run recorded
-with --record, so it runs offline.
+response is priced with metergraph-core's cost_from_response, and the totals
+are printed side by side. Needs ANTHROPIC_API_KEY.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
-import os
 from dataclasses import dataclass
 from decimal import Decimal
-from pathlib import Path
 from typing import Any
 
+from anthropic import Anthropic
 from anthropic.types import Message
 from metergraph_core import LoadedCatalog, cost_from_response, load_catalog
 
@@ -26,7 +21,6 @@ MODEL = "claude-opus-5-5"
 RUNS = 3
 TASK = "What is the temperature in Lisbon right now, in Fahrenheit?"
 SYSTEM = "You are a concise assistant. Use the tools to answer, then reply in one sentence."
-RECORDING = Path(__file__).with_name("recorded_run.json")
 
 
 def _tool(name: str, description: str, properties: dict[str, Any]) -> dict[str, Any]:
@@ -141,7 +135,7 @@ class Totals:
     cost: Decimal = Decimal(0)
 
     def add(self, response: Message, catalog: LoadedCatalog) -> None:
-        # Price the response as returned. No token counts to extract by hand.
+        # Price the response as returned by the SDK.
         result = cost_from_response("anthropic", response, catalog=catalog)
         usage = response.usage
         self.calls += 1
@@ -152,9 +146,9 @@ class Totals:
         self.cost += result.cost or Decimal(0)
 
 
-def price(recorded: dict[str, list[list[Message]]], catalog: LoadedCatalog) -> dict[str, Totals]:
+def price(responses: dict[str, list[list[Message]]], catalog: LoadedCatalog) -> dict[str, Totals]:
     totals = {}
-    for scenario, runs in recorded.items():
+    for scenario, runs in responses.items():
         totals[scenario] = Totals()
         for run in runs:
             for response in run:
@@ -176,60 +170,21 @@ def report(totals: dict[str, Totals]) -> None:
         print(f"15 unused tools, {caching}: ${extra:.6f} extra ({share:.0f}% of the 17-tool total)")
 
 
-def record(client: Any, model: str) -> dict[str, list[list[Message]]]:
+def run_scenarios(client: Any, model: str) -> dict[str, list[list[Message]]]:
     return {
         scenario: [run_task(client, tools, caching, model) for _ in range(RUNS)]
         for scenario, (tools, caching) in SCENARIOS.items()
     }
 
 
-def save(recorded: dict[str, list[list[Message]]], path: Path) -> None:
-    serial = 0
-    document: dict[str, Any] = {"model": None, "scenarios": {}}
-    for scenario, runs in recorded.items():
-        document["scenarios"][scenario] = []
-        for run in runs:
-            saved = []
-            for response in run:
-                serial += 1
-                data = response.model_dump(mode="json", exclude_none=True)
-                data["id"] = f"msg_recorded_{serial}"
-                for index, block in enumerate(data["content"]):
-                    if block["type"] == "tool_use":
-                        block["id"] = f"toolu_recorded_{serial}_{index}"
-                document["model"] = data["model"]
-                saved.append(data)
-            document["scenarios"][scenario].append(saved)
-    path.write_text(json.dumps(document, indent=1) + "\n")
-
-
-def load(path: Path) -> dict[str, list[list[Message]]]:
-    document = json.loads(path.read_text())
-    return {
-        scenario: [[Message.model_validate(data) for data in run] for run in runs]
-        for scenario, runs in document["scenarios"].items()
-    }
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--model", default=MODEL)
-    parser.add_argument("--record", action="store_true", help=f"call the API and save the run to {RECORDING.name}")
     args = parser.parse_args()
 
-    catalog = load_catalog()
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        from anthropic import Anthropic
-
-        print(f"Calling {args.model}: {len(SCENARIOS)} scenarios x {RUNS} runs.")
-        recorded = record(Anthropic(), args.model)
-        if args.record:
-            save(recorded, RECORDING)
-            print(f"Saved to {RECORDING.name}.")
-    else:
-        print(f"ANTHROPIC_API_KEY is not set: replaying {RECORDING.name}.")
-        recorded = load(RECORDING)
-    report(price(recorded, catalog))
+    print(f"Calling {args.model}: {len(SCENARIOS)} scenarios x {RUNS} runs.")
+    responses = run_scenarios(Anthropic(), args.model)
+    report(price(responses, load_catalog()))
 
 
 if __name__ == "__main__":
