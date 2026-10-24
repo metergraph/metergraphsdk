@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 
 _spec = importlib.util.spec_from_file_location("tool_cost_example", Path(__file__).with_name("main.py"))
 assert _spec is not None and _spec.loader is not None
 example = importlib.util.module_from_spec(_spec)
+# @dataclass looks the module up in sys.modules while the class is created.
+sys.modules[_spec.name] = example
 _spec.loader.exec_module(example)
 
 

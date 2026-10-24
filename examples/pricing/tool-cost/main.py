@@ -9,7 +9,7 @@ are printed side by side. Needs ANTHROPIC_API_KEY.
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
@@ -133,6 +133,8 @@ class Totals:
     cache_read: int = 0
     output: int = 0
     cost: Decimal = Decimal(0)
+    # Responses the catalog could not price fully, as "status: model".
+    not_priced: list[str] = field(default_factory=list)
 
     def add(self, response: Message, catalog: LoadedCatalog) -> None:
         # Price the response as returned by the SDK.
@@ -143,7 +145,11 @@ class Totals:
         self.cache_write += usage.cache_creation_input_tokens or 0
         self.cache_read += usage.cache_read_input_tokens or 0
         self.output += usage.output_tokens
-        self.cost += result.cost or Decimal(0)
+        if result.status == "priced":
+            self.cost += result.cost
+        else:
+            missing = ", ".join(result.missing_dimensions) or ", ".join(result.reasons)
+            self.not_priced.append(f"{result.status} ({missing}): {response.model}")
 
 
 def price(responses: dict[str, list[list[Message]]], catalog: LoadedCatalog) -> dict[str, Totals]:
@@ -159,10 +165,17 @@ def price(responses: dict[str, list[list[Message]]], catalog: LoadedCatalog) -> 
 def report(totals: dict[str, Totals]) -> None:
     print(f"{'scenario':<22}{'calls':>6}{'input':>8}{'cache write':>13}{'cache read':>12}{'output':>8}{'cost':>12}")
     for scenario, row in totals.items():
+        cost = "incomplete" if row.not_priced else "$" + format(row.cost, ".6f")
         print(
             f"{scenario:<22}{row.calls:>6}{row.input:>8}{row.cache_write:>13}"
-            f"{row.cache_read:>12}{row.output:>8}{'$' + format(row.cost, '.6f'):>12}"
+            f"{row.cache_read:>12}{row.output:>8}{cost:>12}"
         )
+    not_priced = sorted({entry for row in totals.values() for entry in row.not_priced})
+    if not_priced:
+        print("Some responses could not be fully priced, so no comparison is shown:")
+        for entry in not_priced:
+            print(f"  {entry}")
+        return
     for caching in ("no caching", "caching"):
         two, seventeen = totals[f"2 tools, {caching}"], totals[f"17 tools, {caching}"]
         extra = seventeen.cost - two.cost
