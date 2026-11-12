@@ -521,3 +521,10 @@ fixtures. To update or verify the copy against a Core checkout, run
 `python3 scripts/sync_reliability.py /path/to/metergraph [--check]`, then run both
 SDK test suites. Streaming evidence is inspected before content redaction;
 chunk-only normal streams may retain unknown refusal coverage.
+
+The Python OpenTelemetry exporter passes standard HTTP status, error type and
+all choice-aligned finish reasons into the shared classifier. Original finish
+reasons remain in the existing OTel metadata. `refused=true` means any returned
+choice was explicitly refused; neither a generic span error nor absent content
+is interpreted as a refusal. Availability is a Metergraph projection over
+recorded calls, not a replacement for span status or a physical-attempt metric.

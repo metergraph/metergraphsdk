@@ -47,10 +47,13 @@ function classifyNative(input: {
   error?: unknown;
   http_status_code?: unknown;
   finish_reason?: unknown;
+  attributes?: Record<string, unknown>;
 }): ModelReliability {
   const { response, error } = input;
   const raw =
     input.http_status_code ??
+    input.attributes?.["http.response.status_code"] ??
+    input.attributes?.["http.status_code"] ??
     get(error, "status_code") ??
     get(error, "status") ??
     get(error, "statusCode") ??
@@ -69,6 +72,8 @@ function classifyNative(input: {
     input.finish_reason,
     get(response, "stop_reason"),
     get(response, "finish_reason"),
+    input.attributes?.["llm.finish_reason"],
+    ...items(input.attributes?.["gen_ai.response.finish_reasons"]),
   ].map(reason);
   const complete: boolean[] = [];
   let known = false,
@@ -184,9 +189,10 @@ function classifyNative(input: {
     return { ...result, availability: "unavailable" };
   if (status !== null && status >= 400)
     return { ...result, availability: "excluded" };
-  const errorType = get(error, "name") ?? get(error, "type");
+  const errorType = input.attributes?.["error.type"] ?? get(error, "name") ?? get(error, "type");
   if (
     [
+      "timeout",
       "APITimeoutError",
       "TimeoutError",
       "ReadTimeout",
