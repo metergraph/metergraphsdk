@@ -20,6 +20,9 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 from urllib.parse import urlsplit
 
+from dataclasses import asdict
+from ._reliability import classify_model_reliability
+
 from . import _tool_definitions
 from ._context import CaptureContext, snapshot
 from ._gateway import detect_gateway, gateway_evidence, resolve_gateway
@@ -1105,6 +1108,8 @@ class CallState:
             "status_code": status_code,
             "finish_reason": finish_reason,
             "finish_reason_raw": finish_reason_raw,
+            **asdict(classify_model_reliability(provider=self.provider, response=response, error=error, finish_reason=finish_reason_raw or finish_reason,
+                stream_chunks=stream_chunks, stream_complete=stream and error is None and status not in {"error", "abandoned"})),
             "session_id": self.context.session_id,
             "conversation_id": self.context.session_id,
             "trace_id": self.trace_id,

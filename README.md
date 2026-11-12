@@ -505,3 +505,19 @@ Adapters exist for OpenAI, Anthropic, and Google Gemini in both SDKs, built agai
 ## License
 
 [Apache-2.0](LICENSE)
+
+## Model reliability telemetry
+
+Capture records include three nullable fields: `http_status_code`, `availability`
+(`available`, `unavailable`, or `excluded`), and `refused` (boolean). Missing
+provider evidence stays null. Provider refusals and content-filter blocks are
+available responses; rate limits, provider server errors and request timeouts
+are unavailable. These fields describe recorded model calls, not workflow
+success or hidden SDK retries, and do not change call or cost accounting.
+
+The standalone Python classifier is copied from Metergraph Core to preserve
+zero runtime dependencies. TypeScript follows the same synthetic conformance
+fixtures. To update or verify the copy against a Core checkout, run
+`python3 scripts/sync_reliability.py /path/to/metergraph [--check]`, then run both
+SDK test suites. Streaming evidence is inspected before content redaction;
+chunk-only normal streams may retain unknown refusal coverage.
