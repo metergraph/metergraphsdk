@@ -25,11 +25,8 @@ from metergraph._capture import Options, Runtime
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 
-try:
-    import httpx2 as anthropic_httpx
-except ImportError:
-    # Anthropic <1 uses httpx; Anthropic 1.0+ uses its API-compatible httpx2.
-    anthropic_httpx = httpx
+# Match the client's actual transport, not another SDK's installed dependencies.
+from anthropic._base_client import httpx as anthropic_httpx
 
 
 class Rows:

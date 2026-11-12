@@ -48,10 +48,8 @@ from anthropic import AsyncAnthropic
 from metergraph import _capture
 from metergraph._capture import Options, Runtime
 
-try:  # Anthropic <1 uses httpx; 1.0+ uses its API-compatible httpx2.
-    import httpx2 as anthropic_httpx
-except ImportError:
-    anthropic_httpx = httpx
+# Match the client's actual transport, not another SDK's installed dependencies.
+from anthropic._base_client import httpx as anthropic_httpx
 
 
 # A complete, valid Anthropic streaming SSE sequence: two ordered text deltas
