@@ -132,4 +132,7 @@ test("evidence preserves raw multi-choice and prompt-block facts", async () => {
   assert.deepEqual(modelEvidence({ response: { promptFeedback: { blockReason: "SAFETY" } } }).otel.finish_reasons, ["SAFETY"]);
   assert.equal(modelEvidence({ response: { choices: [{ finish_reason: "stop", message: { content: "ok" } }] } }).refusal_signal, false);
   assert.equal(modelEvidence({ stream_chunks: [{ choices: [{ finish_reason: "stop", delta: {} }] }], stream_complete: true }).refusal_signal, null);
+  assert.deepEqual(modelEvidence({ stream_chunks: [{ type: "response.refusal.delta" }] }), {
+    http_status_code: null, error_code: null, refusal_signal: true, response_received: true,
+  });
 });

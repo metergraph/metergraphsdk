@@ -76,3 +76,6 @@ def test_evidence_preserves_raw_multi_choice_and_prompt_block_facts():
     assert model_evidence(response={'promptFeedback': {'blockReason': 'SAFETY'}})['otel']['finish_reasons'] == ['SAFETY']
     assert model_evidence(response={'choices': [{'finish_reason': 'stop', 'message': {'content': 'ok'}}]})['refusal_signal'] is False
     assert model_evidence(stream_chunks=[{'choices': [{'finish_reason': 'stop', 'delta': {}}]}], stream_complete=True)['refusal_signal'] is None
+
+    assert model_evidence(stream_chunks=[{'type': 'response.refusal.delta'}]) == {
+        'http_status_code': None, 'error_code': None, 'refusal_signal': True, 'response_received': True}

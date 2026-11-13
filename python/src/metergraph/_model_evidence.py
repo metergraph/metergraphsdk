@@ -133,7 +133,7 @@ def model_evidence(*, provider=None, response: Any = None, error: Any = None, at
     signal = True if positive else hint if type(hint) is bool else (
         False if complete and (stream_chunks is None or stream_complete) else None)
     result = dict(http_status_code=status, error_code=code, refusal_signal=signal,
-                  response_received=True if received else attributes.get('metergraph.response_received') if type(attributes.get('metergraph.response_received')) is bool else None)
+                  response_received=True if received or positive else attributes.get('metergraph.response_received') if type(attributes.get('metergraph.response_received')) is bool else None)
     if reasons:
         result['otel'] = {'finish_reasons': reasons}
     return result

@@ -87,7 +87,7 @@ export function modelEvidence(input: {
     native.complete && (input.stream_chunks === undefined || input.stream_complete) ? false : null;
   return {
     http_status_code: status, error_code: text(code) ? code : null,
-    refusal_signal: signal, response_received: native.received ? true : null,
+    refusal_signal: signal, response_received: native.received || native.positive ? true : null,
     ...(native.reasons.length ? { otel: { finish_reasons: native.reasons } } : {}),
   };
 }
