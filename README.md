@@ -502,29 +502,13 @@ Both SDKs also expose an explicit, separately opt-in `batchFirst()` / `batch_fir
 
 Adapters exist for OpenAI, Anthropic, and Google Gemini in both SDKs, built against each provider's documented/introspected current Batch API shape and covered by fake-client contract tests — but **none of the three has been exercised against a live provider Batch API from either SDK**. Treat this as a beta-quality, code-reviewed-but-not-live-verified surface. See [`typescript/README.md`](typescript/README.md) and [`python/README.md`](python/README.md) for exact API shapes and examples.
 
+## Model reliability telemetry
+
+Capture records include nullable `http_status_code`, `availability`, and `refused`
+fields. Refusals and content-filter blocks count as available; rate limits,
+provider server errors, and timeouts count as unavailable. Missing evidence stays
+null. These describe recorded model calls without changing usage or cost totals.
+
 ## License
 
 [Apache-2.0](LICENSE)
-
-## Model reliability telemetry
-
-Capture records include three nullable fields: `http_status_code`, `availability`
-(`available`, `unavailable`, or `excluded`), and `refused` (boolean). Missing
-provider evidence stays null. Provider refusals and content-filter blocks are
-available responses; rate limits, provider server errors and request timeouts
-are unavailable. These fields describe recorded model calls, not workflow
-success or hidden SDK retries, and do not change call or cost accounting.
-
-The standalone Python classifier is copied from Metergraph Core to preserve
-zero runtime dependencies. TypeScript follows the same synthetic conformance
-fixtures. To update or verify the copy against a Core checkout, run
-`python3 scripts/sync_reliability.py /path/to/metergraph [--check]`, then run both
-SDK test suites. Streaming evidence is inspected before content redaction;
-chunk-only normal streams may retain unknown refusal coverage.
-
-The Python OpenTelemetry exporter passes standard HTTP status, error type and
-all choice-aligned finish reasons into the shared classifier. Original finish
-reasons remain in the existing OTel metadata. `refused=true` means any returned
-choice was explicitly refused; neither a generic span error nor absent content
-is interpreted as a refusal. Availability is a Metergraph projection over
-recorded calls, not a replacement for span status or a physical-attempt metric.
