@@ -1144,7 +1144,7 @@ class CallState:
             "tags": dict(self.context.tags),
             "environment": self.runtime.options.environment,
             "error": status_code == "error",
-            "error_type": ((attributes or {}).get("error.type") or type(error).__name__) if error else None,
+            "error_type": (attributes or {}).get("error.type") or (type(error).__name__ if error else None),
             "sdk": "python",
             "sdk_version": SDK_VERSION,
             "runtime": f"{platform.python_implementation().lower()}-{platform.python_version()}",

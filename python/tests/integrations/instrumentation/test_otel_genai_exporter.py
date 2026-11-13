@@ -811,7 +811,7 @@ def test_reliability_uses_standard_span_facts(monkeypatch):
     try:
         MetergraphGenAIExporter().export([
             _span({**base, "gen_ai.response.finish_reasons": ["stop", "content_filter"]}),
-            _span({**base, "error.type": "timeout"}, status=Status(StatusCode.ERROR)),
+            _span({**base, "error.type": "timeout"}),
             _span({**base, "gen_ai.response.finish_reasons": '["stop", "content_filter"]'}),
             _span({**base, "gen_ai.response.finish_reasons": '[invalid'}),
         ])
