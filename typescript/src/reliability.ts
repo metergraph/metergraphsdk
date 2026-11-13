@@ -173,15 +173,16 @@ function classifyNative(input: {
   if (reasons.some((finish) => refusalReasons.has(finish))) refused = true;
   let payload = get(error, "error") ?? get(error, "body") ?? error;
   payload = get(payload, "error") ?? payload;
+  if (status === 400 && get(payload, "code") === "content_policy_violation")
+    refused = true;
   if (
     input.provider?.toLowerCase() === "meta" &&
-    ((status === 400 && get(payload, "code") === "content_policy_violation") ||
-      (status === 403 &&
-        get(payload, "code") === "user_blocked" &&
-        get(payload, "type") === "permission_error" &&
-        String(get(payload, "message") ?? "")
-          .toLowerCase()
-          .includes("repeated policy violations")))
+    status === 403 &&
+    get(payload, "code") === "user_blocked" &&
+    get(payload, "type") === "permission_error" &&
+    String(get(payload, "message") ?? "")
+      .toLowerCase()
+      .includes("repeated policy violations")
   )
     refused = true;
   if (refused) return { ...result, availability: "available", refused: true };
