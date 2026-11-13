@@ -20,8 +20,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 from urllib.parse import urlsplit
 
-from dataclasses import asdict
-from ._reliability import classify_model_reliability
+from ._model_evidence import model_evidence
 
 from . import _tool_definitions
 from ._context import CaptureContext, snapshot
@@ -1109,8 +1108,8 @@ class CallState:
             "status_code": status_code,
             "finish_reason": finish_reason,
             "finish_reason_raw": finish_reason_raw,
-            **asdict(classify_model_reliability(provider=self.provider, response=response, error=error, finish_reason=finish_reason_raw or finish_reason,
-                attributes=attributes, stream_chunks=stream_chunks, stream_complete=stream and error is None and status not in {"error", "abandoned"})),
+            **model_evidence(provider=self.provider, response=response, error=error, attributes=attributes, stream_chunks=stream_chunks,
+                stream_complete=stream and error is None and status not in {"error", "abandoned"}, refusal_signal=self.context.refusal_signal),
             "session_id": self.context.session_id,
             "conversation_id": self.context.session_id,
             "trace_id": self.trace_id,
@@ -1150,10 +1149,6 @@ class CallState:
             "sdk_version": SDK_VERSION,
             "runtime": f"{platform.python_implementation().lower()}-{platform.python_version()}",
         }
-        # Keep the original choice-aligned reasons in existing OTel metadata.
-        reasons = (attributes or {}).get("gen_ai.response.finish_reasons")
-        if isinstance(reasons, (list, tuple)) and all(isinstance(reason, str) for reason in reasons):
-            row["otel"] = {"finish_reasons": list(reasons)}
         # Absence distinguishes tool-free calls from invalid declarations.
         if tool_definitions_value is not None:
             row["tool_definitions"] = tool_definitions_value

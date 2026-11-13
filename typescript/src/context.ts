@@ -10,6 +10,7 @@ export interface CaptureContext {
   unitName?: string;
   unitCount?: number;
   captureText?: boolean;
+  refusalSignal?: boolean;
   funcName?: string;
   traceId?: string;
   traceName?: string;
@@ -27,6 +28,8 @@ export interface TraceOptions {
   captureText?: boolean;
 }
 export interface ContextOptions {
+  /** Scoped observation; an explicit native refusal takes precedence. */
+  refusalSignal?: boolean;
   sessionId?: string;
   tags?: Record<string, unknown>;
 }
@@ -56,6 +59,7 @@ export function withContext<T>(options: ContextOptions, fn: () => T): T {
   const child: CaptureContext = {
     ...parent,
     sessionId: options.sessionId ?? parent.sessionId,
+    refusalSignal: options.refusalSignal ?? parent.refusalSignal,
     tags: { ...parent.tags, ...normalizeTags(options.tags ?? {}) },
   };
   return storage.run(child, fn);
