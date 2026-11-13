@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
-EXPECTED_VERSION = "0.6.12"
+EXPECTED_VERSION = "0.6.13"
 ROOT_README_OPENING = (
     "See where your agentic AI application's LLM spend comes from. Attribute "
     "usage to functions, agents, and workflows without changing provider call "
