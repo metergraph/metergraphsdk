@@ -800,3 +800,22 @@ def test_operation_route_is_derived_and_a_span_route_is_explicit(monkeypatch):
         ("chat", "derived"),
     ]
     _capture.set_runtime(None)
+
+
+def test_reliability_uses_standard_span_facts(monkeypatch):
+    rows = Rows()
+    _capture.set_runtime(Runtime(rows, Options(app_root="")))
+    monkeypatch.setattr(metergraph, "init", lambda: None)
+    base = {"gen_ai.operation.name": "chat", "gen_ai.provider.name": "openai",
+            "gen_ai.request.model": "example-model"}
+    try:
+        MetergraphGenAIExporter().export([
+            _span({**base, "gen_ai.response.finish_reasons": ["stop", "content_filter"]}),
+            _span({**base, "error.type": "timeout"}, status=Status(StatusCode.ERROR)),
+        ])
+        assert [(r["availability"], r["refused"]) for r in rows.rows] == [
+            ("available", True), ("unavailable", None)]
+        assert rows.rows[1]["error_type"] == "timeout"
+        assert rows.rows[0]["otel"]["finish_reasons"] == ["stop", "content_filter"]
+    finally:
+        _capture.set_runtime(None)

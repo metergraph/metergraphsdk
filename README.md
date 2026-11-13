@@ -502,6 +502,13 @@ Both SDKs also expose an explicit, separately opt-in `batchFirst()` / `batch_fir
 
 Adapters exist for OpenAI, Anthropic, and Google Gemini in both SDKs, built against each provider's documented/introspected current Batch API shape and covered by fake-client contract tests — but **none of the three has been exercised against a live provider Batch API from either SDK**. Treat this as a beta-quality, code-reviewed-but-not-live-verified surface. See [`typescript/README.md`](typescript/README.md) and [`python/README.md`](python/README.md) for exact API shapes and examples.
 
+## Model reliability telemetry
+
+Capture records include nullable `http_status_code`, `availability`, and `refused`
+fields. Refusals and content-filter blocks count as available; rate limits,
+provider server errors, and timeouts count as unavailable. Missing evidence stays
+null. These describe recorded model calls without changing usage or cost totals.
+
 ## License
 
 [Apache-2.0](LICENSE)

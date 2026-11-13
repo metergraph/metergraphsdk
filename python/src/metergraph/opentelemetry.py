@@ -218,6 +218,7 @@ class MetergraphGenAIExporter(SpanExporter):
         call.finish(
             response,
             error=error,
+            attributes=attributes,
             response_text=mapped.response_text,
             ttft_ms=ttft_ms,
         )
