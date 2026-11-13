@@ -1,4 +1,4 @@
-import { classifyModelReliability } from "./reliability.js";
+import { modelEvidence } from "./model-evidence.js";
 
 import { randomBytes } from "node:crypto";
 
@@ -741,6 +741,7 @@ export class CaptureRuntime {
       ttftMs?: number;
       responseText?: string;
       responseChunks?: unknown[];
+      evidenceChunks?: unknown[];
     } = {},
   ): void {
     if (state.done) return;
@@ -884,8 +885,8 @@ export class CaptureRuntime {
       status_code: statusCode,
       finish_reason: finishReason,
       finish_reason_raw: finishReasonRaw,
-      ...classifyModelReliability({ provider: state.provider, response, error: extra.error, finish_reason: finishReasonRaw ?? finishReason,
-        stream_chunks: extra.responseChunks, stream_complete: extra.stream === true && extra.error === undefined && extra.status !== "error" && extra.status !== "abandoned" }),
+      ...modelEvidence({ response, error: extra.error, refusalSignal: state.context.refusalSignal,
+        stream_chunks: extra.evidenceChunks ?? extra.responseChunks, stream_complete: extra.stream === true && extra.error === undefined && extra.status !== "error" && extra.status !== "abandoned" }),
       session_id: state.context.sessionId,
       conversation_id: state.context.sessionId,
       trace_id: state.traceId,

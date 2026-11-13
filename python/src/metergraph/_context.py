@@ -22,6 +22,7 @@ class CaptureContext:
     unit_name: str | None = None
     unit_count: float | None = None
     capture_text: bool | None = None
+    refusal_signal: bool | None = None
     func_name: str | None = None
     func_module: str | None = None
     trace_id: str | None = None
@@ -59,16 +60,18 @@ def _exit_scope(tokens) -> None:
 
 
 class context:
-    """Scoped session and tag context manager and sync/async decorator."""
+    """Scoped session, tags and refusal observation; sync/async decorator."""
 
     def __init__(
         self,
         *,
         session_id: str | None = None,
         tags: Mapping[str, Any] | None = None,
+        refusal_signal: bool | None = None,
     ) -> None:
         self.session_id = str(session_id) if session_id is not None else None
         self.tags = {str(k): str(v) for k, v in (tags or {}).items()}
+        self.refusal_signal = refusal_signal if type(refusal_signal) is bool else None
         self._tokens = None
 
     def __enter__(self) -> "context":
@@ -82,6 +85,7 @@ class context:
                     else current.session_id
                 ),
                 tags={**current.tags, **self.tags},
+                refusal_signal=self.refusal_signal if self.refusal_signal is not None else current.refusal_signal,
             )
         )
         return self
@@ -96,14 +100,14 @@ class context:
 
             @functools.wraps(fn)
             async def async_wrapped(*args, **kwargs):
-                with type(self)(session_id=self.session_id, tags=self.tags):
+                with type(self)(session_id=self.session_id, tags=self.tags, refusal_signal=self.refusal_signal):
                     return await fn(*args, **kwargs)
 
             return async_wrapped
 
         @functools.wraps(fn)
         def wrapped(*args, **kwargs):
-            with type(self)(session_id=self.session_id, tags=self.tags):
+            with type(self)(session_id=self.session_id, tags=self.tags, refusal_signal=self.refusal_signal):
                 return fn(*args, **kwargs)
 
         return wrapped

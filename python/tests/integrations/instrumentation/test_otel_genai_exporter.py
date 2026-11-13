@@ -811,11 +811,16 @@ def test_reliability_uses_standard_span_facts(monkeypatch):
     try:
         MetergraphGenAIExporter().export([
             _span({**base, "gen_ai.response.finish_reasons": ["stop", "content_filter"]}),
-            _span({**base, "error.type": "timeout"}, status=Status(StatusCode.ERROR)),
+            _span({**base, "error.type": "timeout"}),
+            _span({**base, "gen_ai.response.finish_reasons": '["stop", "content_filter"]'}),
+            _span({**base, "gen_ai.response.finish_reasons": '[invalid'}),
         ])
-        assert [(r["availability"], r["refused"]) for r in rows.rows] == [
-            ("available", True), ("unavailable", None)]
+        assert all("availability" not in r and "refused" not in r for r in rows.rows)
+        assert all(r["refusal_signal"] is None for r in rows.rows)
+        assert all(r["response_received"] is None for r in rows.rows)
         assert rows.rows[1]["error_type"] == "timeout"
         assert rows.rows[0]["otel"]["finish_reasons"] == ["stop", "content_filter"]
+        assert rows.rows[2]["otel"]["finish_reasons"] == ["stop", "content_filter"]
+        assert "otel" not in rows.rows[3]
     finally:
         _capture.set_runtime(None)

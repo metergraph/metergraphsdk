@@ -504,10 +504,15 @@ Adapters exist for OpenAI, Anthropic, and Google Gemini in both SDKs, built agai
 
 ## Model reliability telemetry
 
-Capture records include nullable `http_status_code`, `availability`, and `refused`
-fields. Refusals and content-filter blocks count as available; rate limits,
-provider server errors, and timeouts count as unavailable. Missing evidence stays
-null. These describe recorded model calls without changing usage or cost totals.
+The SDK records content-free provider facts (`http_status_code`, `error_type`,
+`error_code`, raw finish reasons, `refusal_signal`, and `response_received`).
+Receivers use Core to classify availability and refusal outcomes; the SDK does
+not calculate or emit those outcomes and has no Core runtime dependency.
+
+Use `metergraph.context(refusal_signal=True)` in Python or
+`withContext({ refusalSignal: true }, fn)` in TypeScript for a scoped developer
+observation. Native refusal evidence takes precedence over a false hint; missing
+or partially inspected evidence stays unknown, including chunk-only streams.
 
 ## License
 

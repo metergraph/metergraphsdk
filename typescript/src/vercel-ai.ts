@@ -155,11 +155,13 @@ function wrapStreamResult(
   let finishPart: AnyRecord | undefined;
   let streamError: unknown;
   const content: unknown[] = [];
+  const evidenceChunks: unknown[] = [];
   const responseMetadata: Record<string, unknown> = {};
 
   // Telemetry inspection of one part. Reads part fields, so callers run it
   // fail-open; a fault must not block delivery or become a stream error.
   const observe = (part: AnyRecord) => {
+    evidenceChunks.push(part);
     if (firstOutputAt === undefined && outputChunk(part)) firstOutputAt = performance.now();
     const delta = chunkText(part);
     if (delta !== undefined) text += delta;
@@ -207,6 +209,7 @@ function wrapStreamResult(
       status,
       stream: true,
       responseText: text,
+      evidenceChunks,
       ttftMs: firstOutputAt === undefined ? undefined : Math.round(firstOutputAt - started),
     });
   };

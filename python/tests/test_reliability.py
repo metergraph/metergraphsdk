@@ -1,18 +1,4 @@
-import json
-from dataclasses import asdict
-from pathlib import Path
-
-import pytest
-from metergraph._reliability import classify_model_reliability
-
-CASES = json.loads((Path(__file__).parents[2] / "tests/fixtures/reliability.json").read_text())
-
-@pytest.mark.parametrize("case", CASES, ids=lambda c: c["name"])
-def test_reliability_conformance(case):
-    assert asdict(classify_model_reliability(**case["input"])) == case["expected"]
-
-
-def test_capture_emits_outcome_without_content_or_extra_calls():
+def test_capture_emits_native_evidence_without_content_or_extra_calls():
     from types import SimpleNamespace
     from metergraph import _capture
     import metergraph
@@ -29,8 +15,10 @@ def test_capture_emits_outcome_without_content_or_extra_calls():
         assert client.chat.completions.create(model='example-model', messages=[]) is response
         assert len(rows.rows) == 1
         row = rows.rows[0]
-        assert row['availability'] == 'available'
-        assert row['refused'] is True
+        assert 'availability' not in row and 'refused' not in row
+        assert row['otel']['finish_reasons'] == ['content_filter']
+        assert row['refusal_signal'] is None
+        assert row['response_received'] is True
         assert row['response_text'] is None
     finally:
         _capture.set_runtime(None)
@@ -54,8 +42,40 @@ def test_stream_refusal_survives_terminal_usage_chunk():
         metergraph.wrap(client, provider='openai')
         list(client.chat.completions.create(model='example-model', messages=[], stream=True))
         assert len(rows.rows) == 1
-        assert rows.rows[0]['refused'] is True
-        assert rows.rows[0]['availability'] == 'available'
+        assert rows.rows[0]['refusal_signal'] is True
+        assert rows.rows[0]['otel']['finish_reasons'] == ['stop']
+        assert 'availability' not in rows.rows[0] and 'refused' not in rows.rows[0]
         assert rows.rows[0]['input_tokens'] == 3
     finally:
         _capture.set_runtime(None)
+
+
+def test_scoped_refusal_hint_is_inherited_and_native_positive_wins():
+    import metergraph
+    from metergraph._context import snapshot
+    from metergraph._model_evidence import model_evidence
+    with metergraph.context(refusal_signal=False):
+        assert snapshot().refusal_signal is False
+        assert model_evidence(response={'choices': [{'message': {'refusal': 'policy'}, 'finish_reason': 'stop'}]}, refusal_signal=snapshot().refusal_signal)['refusal_signal'] is True
+        with metergraph.context(refusal_signal=True):
+            assert snapshot().refusal_signal is True
+        assert snapshot().refusal_signal is False
+    assert snapshot().refusal_signal is None
+
+
+def test_evidence_preserves_raw_multi_choice_and_prompt_block_facts():
+    from metergraph._model_evidence import model_evidence
+    evidence = model_evidence(response={'choices': [
+        {'finish_reason': 'stop', 'message': {'content': 'private content'}},
+        {'finish_reason': 'content_filter', 'message': {}}]},
+        error={'status_code': 400, 'body': {'error': {'code': 'structured_code', 'message': 'private error'}}})
+    assert evidence == {'http_status_code': 400, 'error_code': 'structured_code',
+        'refusal_signal': None, 'response_received': True,
+        'otel': {'finish_reasons': ['stop', 'content_filter']}}
+    assert model_evidence(provider='google', error={'code': 429, 'status': 'RESOURCE_EXHAUSTED'})['http_status_code'] == 429
+    assert model_evidence(response={'promptFeedback': {'blockReason': 'SAFETY'}})['otel']['finish_reasons'] == ['SAFETY']
+    assert model_evidence(response={'choices': [{'finish_reason': 'stop', 'message': {'content': 'ok'}}]})['refusal_signal'] is False
+    assert model_evidence(stream_chunks=[{'choices': [{'finish_reason': 'stop', 'delta': {}}]}], stream_complete=True)['refusal_signal'] is None
+
+    assert model_evidence(stream_chunks=[{'type': 'response.refusal.delta'}]) == {
+        'http_status_code': None, 'error_code': None, 'refusal_signal': True, 'response_received': True}
