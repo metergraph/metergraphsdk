@@ -273,3 +273,7 @@ mg.vercelAISDKMiddleware() }); do not also wrap its internal provider transport.
 When done, list every client and AI SDK model you instrumented, and flag LLM
 calls made outside these supported paths.
 ```
+
+### Service tier evidence
+
+Calls include `service_tier` when the provider reports the served tier, and `requested_service_tier` when the request specifies one. These are separate facts: requesting Flex does not prove Flex was served. Streaming capture retains the latest explicit tier through trailing usage-only events. Missing tiers remain unknown.

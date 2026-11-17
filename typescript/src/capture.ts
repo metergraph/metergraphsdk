@@ -54,6 +54,22 @@ function get(value: unknown, key: string): unknown {
   return value && typeof value === "object" ? (value as Record<string, unknown>)[key] : undefined;
 }
 
+function serviceTier(value: unknown): string | undefined {
+  const tier = get(value, "service_tier");
+  return typeof tier === "string" && tier.trim() ? tier.trim() : undefined;
+}
+
+function servedServiceTier(response: unknown, chunks: unknown[] = []): string | undefined {
+  const direct = serviceTier(response) ?? serviceTier(get(response, "response"));
+  if (direct !== undefined) return direct;
+  // A usage-only trailing chunk need not repeat the provider's tier.
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const tier = serviceTier(chunks[i]) ?? serviceTier(get(chunks[i], "response"));
+    if (tier !== undefined) return tier;
+  }
+  return undefined;
+}
+
 function first(value: unknown): unknown {
   return Array.isArray(value) ? value[0] : undefined;
 }
@@ -879,6 +895,8 @@ export class CaptureRuntime {
       provider: state.provider,
       model: state.request.model,
       ...usage(response),
+      service_tier: servedServiceTier(response, extra.responseChunks),
+      requested_service_tier: serviceTier(state.request),
       ...gatewayEvidence(state.gateway, state.endpoint, response),
       latency_ms: Math.round(performance.now() - state.started),
       status,
