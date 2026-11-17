@@ -114,3 +114,36 @@ test("transport invalidates the session on 403 instead of going fatal", async (t
 
   assert.equal(session.invalidated, 1);
 });
+
+test("shutdown cancels a stalled upload and does not start queued uploads", async (t) => {
+  let calls = 0;
+  let disconnected;
+  const closed = new Promise((resolve) => { disconnected = resolve; });
+  let received;
+  const started = new Promise((resolve) => { received = resolve; });
+  const server = await serve((request, response) => {
+    calls += 1;
+    request.resume();
+    response.on("close", disconnected);
+    received();
+    // Deliberately never send response headers.
+  });
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const transport = new Transport("test-token", `http://127.0.0.1:${server.address().port}`, {
+    mode: "background", batchSize: 1, flushMs: 60_000,
+  });
+  t.after(() => transport.shutdown());
+  transport.enqueue({ id: 1 });
+  await started;
+  transport.enqueue({ id: 2 });
+  const before = Date.now();
+  await transport.shutdown();
+  assert.ok(Date.now() - before < 4_000, "shutdown must remain bounded");
+  const cancelled = await Promise.race([
+    closed.then(() => true),
+    new Promise((resolve) => setTimeout(() => resolve(false), 500)),
+  ]);
+  assert.equal(cancelled, true, "shutdown must close the stalled upload");
+  assert.equal(calls, 1, "shutdown must not start another upload after its deadline");
+  assert.equal(transport.enqueue({ id: 3 }), false, "closed transport rejects new records");
+});
