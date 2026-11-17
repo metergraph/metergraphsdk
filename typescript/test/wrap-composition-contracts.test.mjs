@@ -261,3 +261,20 @@ test("wrap() preserves a caller-requested openai usage-only streaming chunk", as
   assert.equal(rows.length, 1);
   assert.equal(rows[0].input_tokens, 2);
 });
+
+test("stream wrappers preserve native getters backed by private fields", async (t) => {
+  const rows = installRuntime(t);
+  const response = new Response(null, { headers: { "request-id": "req_test" } });
+  class MessageStream {
+    #requestId = "req_test";
+    get request_id() { return this.#requestId; }
+    async finalMessage() { return MESSAGE_BODY; }
+    async withResponse() { return { data: this, response }; }
+  }
+  const client = wrap({ messages: { stream: () => new MessageStream() } }, "anthropic");
+  const stream = client.messages.stream({ model: "example-model", messages: [] });
+  assert.equal((await stream.finalMessage()).content[0].text, "hi");
+  assert.equal((await stream.withResponse()).response, response);
+  assert.equal(stream.request_id, "req_test");
+  assert.equal(rows.length, 1);
+});
