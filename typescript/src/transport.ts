@@ -37,6 +37,7 @@ export class Transport {
   private scheduled = false;
   private inFlight: Promise<void> = Promise.resolve();
   private fatal = false;
+  private upload?: AbortController;
   private dropped = 0;
   private errors = 0;
   private retryAt = 0;
@@ -142,9 +143,18 @@ export class Transport {
       await this.deliver(rows.slice(midpoint));
       return;
     }
+    if (this.fatal) {
+      this.dropped += rows.length;
+      return;
+    }
+    const controller = new AbortController();
+    this.upload = controller;
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    timeout.unref?.();
     try {
       const response = await fetch(`${this.baseUrl.replace(/\/$/, "")}/v1/ingest`, {
         method: "POST",
+        signal: controller.signal,
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -193,11 +203,18 @@ export class Transport {
         "transport_error",
         `ingest request to ${this.baseUrl} failed: ${error instanceof Error ? error.message : String(error)}`,
       );
+    } finally {
+      clearTimeout(timeout);
+      if (this.upload === controller) this.upload = undefined;
     }
   }
 
   async shutdown(): Promise<void> {
     if (this.timer) clearInterval(this.timer);
     await this.flush();
+    this.fatal = true;
+    this.dropped += this.queue.length;
+    this.queue.length = 0;
+    this.upload?.abort();
   }
 }
