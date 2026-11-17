@@ -56,3 +56,57 @@ test("malformed tiers are omitted rather than inferred",async(t)=>{
   assert.equal(rows[0].service_tier,undefined);
   assert.equal(rows[0].requested_service_tier,undefined);
 });
+
+const tierCases = [
+  ["Anthropic nested usage", "anthropic", "messages.create", {service_tier:"auto"}, {usage:{service_tier:"standard"}}, "standard", "auto"],
+  ["Google Vertex Flex", "google", "models.generate_content", {config:{httpOptions:{headers:{"X-Vertex-AI-LLM-Shared-Request-Type":"flex"}}}}, {usageMetadata:{trafficType:"ON_DEMAND_FLEX"}}, "flex", "flex"],
+  ["Google standard fallback", "google", "models.generate_content", {config:{serviceTier:"flex"}}, {usageMetadata:{trafficType:"ON_DEMAND"}}, "standard", "flex"],
+  ["Google snake case", "google", "models.generate_content", {config:{service_tier:"flex"}}, {usage_metadata:{traffic_type:"ON_DEMAND_FLEX"}}, "flex", "flex"],
+  ["Google Developer tier", "google", "models.generate_content", {config:{serviceTier:"flex"}}, {usageMetadata:{serviceTier:"flex"}}, "flex", "flex"],
+  ["OpenAI batch transport", "openai", "batch.responses", {batch:true}, {service_tier:"default"}, "batch", undefined],
+  ["Anthropic batch transport", "anthropic", "batch.messages", {batch:true}, {usage:{service_tier:"standard"}}, "batch", undefined],
+  ["requested batch alone", "anthropic", "messages.create", {service_tier:"batch"}, {}, undefined, "batch"],
+];
+function finishRow(t,provider,endpoint,request,response,extra={}) {
+  const rows=capture(t);
+  const runtime=new CaptureRuntime({enqueue(row){rows.push(row);return true;}},{captureText:false,appRoot:"",skipFrames:[],textMaxBytes:1024});
+  runtime.finish(runtime.start(provider,endpoint,{model:"example-model",...request}),response,extra);
+  return rows[0];
+}
+for (const [name,provider,endpoint,request,response,served,requested] of tierCases) {
+  test(name, (t) => {
+    const row=finishRow(t,provider,endpoint,request,response);
+    assert.equal(row.service_tier,served);
+    assert.equal(row.requested_service_tier,requested);
+  });
+}
+for (const [provider,endpoint,chunks] of [
+  ["anthropic","messages.create",[{type:"message_start",message:{usage:{service_tier:"standard"}}},{type:"message_stop"}]],
+  ["google","models.generate_content.stream",[{usageMetadata:{trafficType:"ON_DEMAND_FLEX"}},{candidates:[]}]],
+]) test(`${provider} stream retains tier before a trailing event`, (t) => {
+  const row=finishRow(t,provider,endpoint,{},chunks.at(-1),{stream:true,responseChunks:chunks});
+  assert.equal(row.service_tier,provider==="google"?"flex":"standard");
+});
+test("failed batch results do not establish a served tier", (t) => {
+  const row=finishRow(t,"anthropic","batch.messages",{batch:true,service_tier:"batch"},{},{status:"error"});
+  assert.equal(row.service_tier,undefined);
+});
+
+test("batch adapters do not invent a requested service tier", async (t) => {
+  const rows=capture(t);
+  const item={custom_id:"tier-regression",result:{type:"succeeded",message:{model:"example-model",usage:{service_tier:"standard"}}}};
+  const client=wrap({messages:{batches:{results:async()=>({async *[Symbol.asyncIterator](){yield item;}})}}},"anthropic");
+  for await (const value of await client.messages.batches.results("batch-tier-regression")) assert.equal(value,item);
+  assert.equal(rows[0].requested_service_tier,undefined);
+  assert.equal(rows[0].service_tier,"batch");
+});
+
+test("OpenAI batch capture does not invent a requested service tier", async (t) => {
+  const rows=capture(t);
+  const item={id:"tier-regression",custom_id:"tier-regression",response:{status_code:200,body:{model:"example-model",object:"response",service_tier:"default"}}};
+  const text=JSON.stringify(item);
+  const client=wrap({files:{content:async()=>({text:async()=>text})}},"openai");
+  assert.equal(await (await client.files.content("file-tier-regression")).text(),text);
+  assert.equal(rows[0].requested_service_tier,undefined);
+  assert.equal(rows[0].service_tier,"batch");
+});

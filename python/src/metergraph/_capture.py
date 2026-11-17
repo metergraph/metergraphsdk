@@ -46,6 +46,57 @@ def _get(value: Any, name: str, default: Any = None) -> Any:
     return getattr(value, name, default)
 
 
+def _tier_string(value: Any) -> str | None:
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _service_tier(value: Any) -> str | None:
+    return _tier_string(_get(value, "service_tier") or _get(value, "serviceTier"))
+
+
+def _response_tier(value: Any) -> str | None:
+    direct = _service_tier(value) or _service_tier(_get(value, "usage"))
+    if direct is not None:
+        return direct
+    usage = _get(value, "usage_metadata") or _get(value, "usageMetadata")
+    tier = _service_tier(usage)
+    if tier is not None:
+        return tier
+    traffic = _tier_string(_get(usage, "traffic_type") or _get(usage, "trafficType"))
+    return {
+        "ON_DEMAND_FLEX": "flex",
+        "ON_DEMAND": "standard",
+        "ON_DEMAND_PRIORITY": "priority",
+    }.get(traffic, traffic)
+
+
+def _served_service_tier(response: Any, chunks: list[Any] | None) -> str | None:
+    def read(value: Any) -> str | None:
+        return (_response_tier(value) or _response_tier(_get(value, "response"))
+                or _response_tier(_get(value, "message")))
+    direct = read(response)
+    if direct is not None:
+        return direct
+    for chunk in reversed(chunks or []):
+        tier = read(chunk)
+        if tier is not None:
+            return tier
+    return None
+
+
+def _requested_service_tier(request: Any) -> str | None:
+    config = _get(request, "config")
+    explicit = _service_tier(request) or _service_tier(config)
+    if explicit is not None:
+        return explicit
+    http = _get(config, "http_options") or _get(config, "httpOptions")
+    headers = _get(http, "headers")
+    if not isinstance(headers, Mapping):
+        return None
+    return next((_tier_string(value) for key, value in headers.items()
+                 if str(key).lower() == "x-vertex-ai-llm-shared-request-type"), None)
+
+
 def _first(value: Any) -> Any:
     try:
         return value[0]
@@ -1102,6 +1153,13 @@ class CallState:
             "provider": self.provider,
             "model": self.request.get("model"),
             **_usage(response),
+            # Batch transport confirms billing even if the body reports a default tier.
+            "service_tier": (
+                "batch" if self.endpoint.startswith("batch.") and response is not None
+                and error is None and status != "error"
+                else _served_service_tier(response, stream_chunks)
+            ),
+            "requested_service_tier": _requested_service_tier(self.request),
             **_gateway_evidence(self.gateway, self.endpoint, response),
             "latency_ms": round((time.perf_counter() - self.started) * 1000),
             "status": effective_status,
@@ -1471,7 +1529,6 @@ def _capture_openai_batch_item(
     request = {
         "model": _get(body, "model"),
         "batch": True,
-        "service_tier": "batch",
         "batch_custom_id": custom_id or None,
         "batch_item_id": item_id or None,
     }
@@ -1530,7 +1587,6 @@ def _capture_anthropic_batch_item(
     request = {
         "model": _get(message, "model"),
         "batch": True,
-        "service_tier": "batch",
         "batch_custom_id": custom_id or None,
         "batch_id": batch_id or None,
     }

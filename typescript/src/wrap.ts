@@ -92,7 +92,6 @@ function captureOpenAIBatchItem(
   const request = {
     model: get(body, "model"),
     batch: true,
-    service_tier: "batch",
     batch_custom_id: customId || undefined,
     batch_item_id: itemId || undefined,
   };
@@ -183,7 +182,6 @@ function captureAnthropicBatchItem(
   const state = capture.start("anthropic", "batch.messages", {
     model: get(message, "model"),
     batch: true,
-    service_tier: "batch",
     batch_custom_id: customId || undefined,
     batch_id: batchId || undefined,
   }, stack, context);

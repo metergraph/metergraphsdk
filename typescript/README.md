@@ -276,4 +276,4 @@ calls made outside these supported paths.
 
 ### Service tier evidence
 
-Calls include `service_tier` when the provider reports the served tier, and `requested_service_tier` when the request specifies one. These are separate facts: requesting Flex does not prove Flex was served. Streaming capture retains the latest explicit tier through trailing usage-only events. Missing tiers remain unknown.
+Calls record `service_tier` separately from `requested_service_tier`: requesting Flex does not prove it was served. Capture reads OpenAI's response tier, Anthropic's usage tier, and Google's usage tier or traffic type, retaining evidence across trailing stream events. Successful Batch API results record `batch` from the transport, without inventing a requested tier. Missing response evidence stays unknown.
