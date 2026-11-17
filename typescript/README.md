@@ -273,3 +273,7 @@ mg.vercelAISDKMiddleware() }); do not also wrap its internal provider transport.
 When done, list every client and AI SDK model you instrumented, and flag LLM
 calls made outside these supported paths.
 ```
+
+### Service tier evidence
+
+Calls record `service_tier` separately from `requested_service_tier`: requesting Flex does not prove it was served. Capture reads OpenAI's response tier, Anthropic's usage tier, and Google's usage tier or traffic type, retaining evidence across trailing stream events. Successful Batch API results record `batch` from the transport, without inventing a requested tier. Missing response evidence stays unknown.

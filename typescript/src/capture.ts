@@ -54,6 +54,52 @@ function get(value: unknown, key: string): unknown {
   return value && typeof value === "object" ? (value as Record<string, unknown>)[key] : undefined;
 }
 
+function tierString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function serviceTier(value: unknown): string | undefined {
+  return tierString(get(value, "service_tier") ?? get(value, "serviceTier"));
+}
+
+function responseTier(value: unknown): string | undefined {
+  const direct = serviceTier(value) ?? serviceTier(get(value, "usage"));
+  if (direct !== undefined) return direct;
+  const usage = get(value, "usageMetadata") ?? get(value, "usage_metadata");
+  const nativeTier = serviceTier(usage);
+  if (nativeTier !== undefined) return nativeTier;
+  const traffic = tierString(get(usage, "trafficType") ?? get(usage, "traffic_type"));
+  if (traffic === "ON_DEMAND_FLEX") return "flex";
+  if (traffic === "ON_DEMAND") return "standard";
+  if (traffic === "ON_DEMAND_PRIORITY") return "priority";
+  return traffic;
+}
+
+function servedServiceTier(response: unknown, chunks: unknown[] = []): string | undefined {
+  const read = (value: unknown) => responseTier(value)
+    ?? responseTier(get(value, "response")) ?? responseTier(get(value, "message"));
+  const direct = read(response);
+  if (direct !== undefined) return direct;
+  // A trailing event need not repeat the provider's tier.
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const tier = read(chunks[i]);
+    if (tier !== undefined) return tier;
+  }
+  return undefined;
+}
+
+function requestedServiceTier(request: unknown): string | undefined {
+  const config = get(request, "config");
+  const explicit = serviceTier(request) ?? serviceTier(config);
+  if (explicit !== undefined) return explicit;
+  const http = get(config, "httpOptions") ?? get(config, "http_options");
+  const headers = get(http, "headers");
+  if (!headers || typeof headers !== "object") return undefined;
+  return tierString(Object.entries(headers).find(
+    ([key]) => key.toLowerCase() === "x-vertex-ai-llm-shared-request-type",
+  )?.[1]);
+}
+
 function first(value: unknown): unknown {
   return Array.isArray(value) ? value[0] : undefined;
 }
@@ -879,6 +925,11 @@ export class CaptureRuntime {
       provider: state.provider,
       model: state.request.model,
       ...usage(response),
+      // The Batch API confirms billing even when its body reports a default tier.
+      service_tier: state.endpoint.startsWith("batch.") && response != null
+        && !extra.error && extra.status !== "error"
+        ? "batch" : servedServiceTier(response, extra.responseChunks),
+      requested_service_tier: requestedServiceTier(state.request),
       ...gatewayEvidence(state.gateway, state.endpoint, response),
       latency_ms: Math.round(performance.now() - state.started),
       status,

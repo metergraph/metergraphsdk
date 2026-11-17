@@ -92,7 +92,6 @@ function captureOpenAIBatchItem(
   const request = {
     model: get(body, "model"),
     batch: true,
-    service_tier: "batch",
     batch_custom_id: customId || undefined,
     batch_item_id: itemId || undefined,
   };
@@ -183,7 +182,6 @@ function captureAnthropicBatchItem(
   const state = capture.start("anthropic", "batch.messages", {
     model: get(message, "model"),
     batch: true,
-    service_tier: "batch",
     batch_custom_id: customId || undefined,
     batch_id: batchId || undefined,
   }, stack, context);
@@ -323,7 +321,7 @@ function streamProxy(
   }
 
   return new Proxy(stream, {
-    get(target, property, receiver) {
+    get(target, property) {
       if (property === Symbol.asyncIterator && typeof target[Symbol.asyncIterator] === "function") {
         return async function* () {
           try {
@@ -375,7 +373,7 @@ function streamProxy(
         };
       }
       if (property === "close" || property === "abort") {
-        const original = Reflect.get(target, property, receiver);
+        const original = Reflect.get(target, property);
         if (typeof original !== "function") return original;
         return (...args: unknown[]) => {
           let returned: unknown;
@@ -392,7 +390,7 @@ function streamProxy(
           return returned;
         };
       }
-      const value = Reflect.get(target, property, receiver);
+      const value = Reflect.get(target, property);
       return typeof value === "function" ? value.bind(target) : value;
     },
   });
