@@ -21,6 +21,7 @@ from typing import Any, Callable, Mapping
 from urllib.parse import urlsplit
 
 from ._model_evidence import model_evidence
+from ._retrieval import retrieval_usage
 
 from . import _tool_definitions
 from ._context import CaptureContext, snapshot
@@ -1153,6 +1154,7 @@ class CallState:
             "provider": self.provider,
             "model": self.request.get("model"),
             **_usage(response),
+            **retrieval_usage(self.provider, self.endpoint, self.request, response, stream_chunks),
             # Batch transport confirms billing even if the body reports a default tier.
             "service_tier": (
                 "batch" if self.endpoint.startswith("batch.") and response is not None
@@ -2086,6 +2088,11 @@ def _detect_provider(client: Any) -> str:
     if hasattr(getattr(client, "models", None), "generate_content"):
         return "google"
     if hasattr(client, "chat") or hasattr(client, "responses"):
+        try:
+            if urlsplit(str(getattr(client, "base_url", ""))).hostname == "api.perplexity.ai":
+                return "perplexity"
+        except ValueError:
+            pass
         return "openai"
     return "anthropic"
 
@@ -2131,7 +2138,7 @@ def _apply_seams(
     gateway_name: str | None = None,
 ) -> list[str]:
     patched: list[str] = []
-    for seam in SEAM_TABLES.get(provider, ()):
+    for seam in SEAM_TABLES.get("openai" if provider == "perplexity" else provider, ()):
         try:
             owner = _resolve(client, seam.path)
         except Exception:

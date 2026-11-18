@@ -1,3 +1,4 @@
+import { retrievalUsage } from "./retrieval.js";
 import { modelEvidence } from "./model-evidence.js";
 
 import { randomBytes } from "node:crypto";
@@ -925,6 +926,7 @@ export class CaptureRuntime {
       provider: state.provider,
       model: state.request.model,
       ...usage(response),
+      ...retrievalUsage(state.provider, state.endpoint, state.request, response, extra.responseChunks),
       // The Batch API confirms billing even when its body reports a default tier.
       service_tier: state.endpoint.startsWith("batch.") && response != null
         && !extra.error && extra.status !== "error"
