@@ -7,6 +7,7 @@ code.
 
 ## Setup and run
 
+Running `npm start` makes two billable OpenRouter calls.
 This folder is a self-contained package. `npm install` builds the local
 `metergraph` package and installs `openai`.
 
@@ -41,6 +42,17 @@ The example picks the branch from `OPENROUTER_BASE_URL`, so setting it to a
 custom host exercises the override. The existing provider-string form
 (`mg.wrap(client, "openai")`) still works; an options object may pass a
 consistent `{ provider: "openai", gateway: "openrouter" }`.
+
+## Request attribution
+
+Both calls share user `user-123`, session `session-123`, customer metadata
+`customer_id=customer-123`, and one `gateway-comparison` trace. Replace these
+synthetic IDs with your application's opaque IDs. The streaming call overrides
+only `metadata.mode` to `streaming`; the normal call keeps `nonstreaming`.
+Attribution is captured when the call starts, so the stream keeps its tags when
+consumed outside that inner scope. Provider requests and billing capture are
+unchanged. Use an SDK build containing user context support and compatible
+ingestion. See the [focused attribution example](../../../../attribution/user-context/).
 
 ## What is captured
 

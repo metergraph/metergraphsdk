@@ -19,6 +19,7 @@ events while keeping MeterGraph running.
 
 | Example | Needs |
 |---|---|
+| [`attribution/user-context/`](attribution/user-context/) | User, session and customer attribution in concurrent Python and JavaScript requests |
 | `route-grouping/content-generation/one-trace-two-workloads/` | Manually group calls into named routes inside one trace |
 | `test-fixtures/fake-providers/run_e2e.py` | Nothing required. Offline demo traffic |
 | `integrations/providers/openai/` | Native OpenAI wrappers for Python and TypeScript |

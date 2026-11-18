@@ -135,3 +135,44 @@ def test_attribution_bounds_preserve_exact_strings_and_codepoint_order():
         assert _context.snapshot().user_id is None
         assert 0 < len(tags) < 32
         assert len(json.dumps(tags, ensure_ascii=False, separators=(",", ":")).encode()) <= 65536
+
+
+def test_user_context_example_isolates_concurrent_requests():
+    import importlib.util
+    from pathlib import Path
+    from types import SimpleNamespace
+    from metergraph import _capture
+
+    path = Path(__file__).resolve().parents[2] / "examples/attribution/user-context/main.py"
+    spec = importlib.util.spec_from_file_location("user_context_example", path)
+    example = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(example)
+
+    class Rows:
+        def __init__(self): self.rows = []
+        def enqueue(self, row): self.rows.append(row); return True
+
+    async def create(**kwargs):
+        assert set(kwargs) == {"model", "messages"}
+        await asyncio.sleep(0)
+        return {"choices": [], "usage": {"prompt_tokens": 1, "completion_tokens": 1}}
+
+    rows = Rows()
+    _capture.set_runtime(_capture.Runtime(rows, _capture.Options(capture_text=False)))
+    client = metergraph.wrap(SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))), provider="openai")
+    async def run():
+        return await asyncio.gather(*[
+            example.answer(client, user_id=f"user-{i}", session_id=f"session-{i}",
+                           customer_id="customer-123", question="Synthetic question")
+            for i in (1, 2)
+        ])
+    try:
+        asyncio.run(run())
+        assert sorted((r["user_id"], r["session_id"]) for r in rows.rows) == [
+            ("user-1", "session-1"), ("user-2", "session-2"),
+        ]
+        assert len({r["trace_id"] for r in rows.rows}) == 2
+        assert all(r["tags"] == {"customer_id": "customer-123", "feature": "support"}
+                   and r["route"] == "support.answer" and not r["content_opted_in"] for r in rows.rows)
+    finally:
+        _capture.set_runtime(None)

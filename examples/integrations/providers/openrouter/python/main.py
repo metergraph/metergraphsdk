@@ -34,38 +34,43 @@ def main():
     client = build_client()
     requested_model = "anthropic/claude-sonnet-4.6"
     try:
-        # Application code: an ordinary non-streaming call.
-        response = client.chat.completions.create(
-            model=requested_model,
-            messages=[{"role": "user", "content": "Explain cache-aware pricing in one sentence."}],
-        )
-        nonstream = {
-            "served_model": response.model,
-            "content": response.choices[0].message.content,
-        }
+        with metergraph.context(
+            user_id="user-123", session_id="session-123",
+            metadata={"customer_id": "customer-123", "mode": "nonstreaming"},
+        ), metergraph.trace("gateway-comparison"):
+            # Application code: an ordinary non-streaming call.
+            response = client.chat.completions.create(
+                model=requested_model,
+                messages=[{"role": "user", "content": "Explain cache-aware pricing in one sentence."}],
+            )
+            nonstream = {
+                "served_model": response.model,
+                "content": response.choices[0].message.content,
+            }
 
-        # Application code: an ordinary streaming call and its iteration.
-        # OpenRouter sends the final usage event and MeterGraph leaves it visible.
-        stream = client.chat.completions.create(
-            model=requested_model,
-            messages=[{"role": "user", "content": "Stream a short note about metered clouds."}],
-            stream=True,
-        )
-        parts = []
-        chunk_count = 0
-        served_model = None
-        for chunk in stream:
-            chunk_count += 1
-            served_model = served_model or getattr(chunk, "model", None)
-            choices = getattr(chunk, "choices", None) or []
-            if choices and getattr(choices[0].delta, "content", None):
-                parts.append(choices[0].delta.content)
-        stream_summary = {
-            "served_model": served_model,
-            "content": "".join(parts),
-            "chunk_count": chunk_count,
-        }
-        return {"nonstream": nonstream, "stream": stream_summary}
+            # Application code: an ordinary streaming call and its iteration.
+            # OpenRouter sends the final usage event and MeterGraph leaves it visible.
+            with metergraph.context(metadata={"mode": "streaming"}):
+                stream = client.chat.completions.create(
+                    model=requested_model,
+                    messages=[{"role": "user", "content": "Stream a short note about metered clouds."}],
+                    stream=True,
+                )
+            parts = []
+            chunk_count = 0
+            served_model = None
+            for chunk in stream:
+                chunk_count += 1
+                served_model = served_model or getattr(chunk, "model", None)
+                choices = getattr(chunk, "choices", None) or []
+                if choices and getattr(choices[0].delta, "content", None):
+                    parts.append(choices[0].delta.content)
+            stream_summary = {
+                "served_model": served_model,
+                "content": "".join(parts),
+                "chunk_count": chunk_count,
+            }
+            return {"nonstream": nonstream, "stream": stream_summary}
     finally:
         # MeterGraph integration (shutdown): deliver captured rows and stop
         # background work.

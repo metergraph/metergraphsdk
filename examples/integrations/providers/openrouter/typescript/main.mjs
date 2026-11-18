@@ -25,33 +25,40 @@ export async function main() {
 
   const requestedModel = "anthropic/claude-sonnet-4.6";
   try {
-    // Application code: an ordinary non-streaming call.
-    const response = await client.chat.completions.create({
-      model: requestedModel,
-      messages: [{ role: "user", content: "Explain cache-aware pricing in one sentence." }],
-    });
-    const nonstream = {
-      servedModel: response.model,
-      content: response.choices[0].message.content,
-    };
+    return await mg.withContext({
+      userId: "user-123", sessionId: "session-123",
+      metadata: { customer_id: "customer-123", mode: "nonstreaming" },
+    }, () => mg.trace("gateway-comparison", async () => {
+      // Application code: an ordinary non-streaming call.
+      const response = await client.chat.completions.create({
+        model: requestedModel,
+        messages: [{ role: "user", content: "Explain cache-aware pricing in one sentence." }],
+      });
+      const nonstream = {
+        servedModel: response.model,
+        content: response.choices[0].message.content,
+      };
 
-    // Application code: an ordinary streaming call and its iteration. OpenRouter
-    // sends the final usage event and MeterGraph leaves every chunk visible.
-    const stream = await client.chat.completions.create({
-      model: requestedModel,
-      messages: [{ role: "user", content: "Stream a short note about metered clouds." }],
-      stream: true,
-    });
-    let text = "";
-    let chunkCount = 0;
-    let servedModel;
-    for await (const chunk of stream) {
-      chunkCount += 1;
-      servedModel ??= chunk.model;
-      text += chunk.choices?.[0]?.delta?.content ?? "";
-    }
-    const streamSummary = { servedModel, content: text, chunkCount };
-    return { nonstream, stream: streamSummary };
+      // Application code: an ordinary streaming call and its iteration. OpenRouter
+      // sends the final usage event and MeterGraph leaves every chunk visible.
+      const stream = await mg.withContext({ metadata: { mode: "streaming" } }, () =>
+        client.chat.completions.create({
+          model: requestedModel,
+          messages: [{ role: "user", content: "Stream a short note about metered clouds." }],
+          stream: true,
+        }),
+      );
+      let text = "";
+      let chunkCount = 0;
+      let servedModel;
+      for await (const chunk of stream) {
+        chunkCount += 1;
+        servedModel ??= chunk.model;
+        text += chunk.choices?.[0]?.delta?.content ?? "";
+      }
+      const streamSummary = { servedModel, content: text, chunkCount };
+      return { nonstream, stream: streamSummary };
+    }));
   } finally {
     // MeterGraph integration (shutdown): deliver captured rows and stop
     // background work.

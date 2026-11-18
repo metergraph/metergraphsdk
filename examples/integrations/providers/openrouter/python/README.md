@@ -7,8 +7,10 @@ code.
 
 ## Setup and run
 
+Run from the repository root. This makes two billable OpenRouter calls.
+
 ```bash
-pip install metergraph openai
+python -m pip install -e ./python openai
 export OPENROUTER_API_KEY=sk-or-...            # your OpenRouter key
 export METERGRAPH_APP_TOKEN=dev-token          # one of your server's MG_TOKENS
 export METERGRAPH_INGEST_URL=http://localhost:8787   # your self-hosted server
@@ -34,6 +36,17 @@ client = metergraph.wrap(openai_client, gateway="openrouter")
 The example picks the branch from `OPENROUTER_BASE_URL`, so setting it to a
 custom host exercises the override. `provider=` and `gateway=` cannot be mixed
 except for a consistent `provider="openai"`.
+
+## Request attribution
+
+Both calls share user `user-123`, session `session-123`, customer metadata
+`customer_id=customer-123`, and one `gateway-comparison` trace. Replace these
+synthetic IDs with your application's opaque IDs. The streaming call overrides
+only `metadata.mode` to `streaming`; the normal call keeps `nonstreaming`.
+Attribution is captured when the call starts, so the stream keeps its tags when
+consumed outside that inner scope. Provider requests and billing capture are
+unchanged. Use an SDK build containing user context support and compatible
+ingestion. See the [focused attribution example](../../../../attribution/user-context/).
 
 ## What is captured
 
