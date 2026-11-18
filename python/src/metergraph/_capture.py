@@ -21,6 +21,7 @@ from typing import Any, Callable, Mapping
 from urllib.parse import urlsplit
 
 from ._model_evidence import model_evidence
+from ._retrieval import retrieval_usage
 
 from . import _tool_definitions
 from ._context import CaptureContext, snapshot
@@ -102,29 +103,6 @@ def _first(value: Any) -> Any:
         return value[0]
     except (IndexError, KeyError, TypeError):
         return None
-
-
-def _web_search_calls(response: Any, chunks: list[Any] | None = None) -> int | None:
-    """Preserve billable counts before reducing/redacting the native response."""
-    output = _get(response, "output")
-    if not isinstance(output, list):
-        for chunk in reversed(chunks or []):
-            if _get(chunk, "type") in {"response.completed", "response.incomplete", "response.failed"}:
-                output = _get(_get(chunk, "response"), "output")
-                if isinstance(output, list):
-                    break
-    if isinstance(output, list):
-        return sum(_get(item, "type") == "web_search_call" for item in output)
-    searches = set()
-    for chunk in chunks or []:
-        item = _get(chunk, "item")
-        if _get(chunk, "type") == "response.output_item.done" and _get(item, "type") == "web_search_call":
-            id = _get(item, "id")
-            if id is None:
-                id = _get(chunk, "output_index")
-            if id is not None:
-                searches.add(id)
-    return len(searches) or None
 
 
 def _int(value: Any) -> int | None:
@@ -1176,8 +1154,7 @@ class CallState:
             "provider": self.provider,
             "model": self.request.get("model"),
             **_usage(response),
-            **({"web_search_calls": _web_search_calls(response, stream_chunks)}
-               if self.provider == "openai" else {}),
+            **retrieval_usage(self.provider, self.endpoint, self.request, response, stream_chunks),
             # Batch transport confirms billing even if the body reports a default tier.
             "service_tier": (
                 "batch" if self.endpoint.startswith("batch.") and response is not None
@@ -2111,6 +2088,11 @@ def _detect_provider(client: Any) -> str:
     if hasattr(getattr(client, "models", None), "generate_content"):
         return "google"
     if hasattr(client, "chat") or hasattr(client, "responses"):
+        try:
+            if urlsplit(str(getattr(client, "base_url", ""))).hostname == "api.perplexity.ai":
+                return "perplexity"
+        except ValueError:
+            pass
         return "openai"
     return "anthropic"
 
@@ -2156,7 +2138,7 @@ def _apply_seams(
     gateway_name: str | None = None,
 ) -> list[str]:
     patched: list[str] = []
-    for seam in SEAM_TABLES.get(provider, ()):
+    for seam in SEAM_TABLES.get("openai" if provider == "perplexity" else provider, ()):
         try:
             owner = _resolve(client, seam.path)
         except Exception:

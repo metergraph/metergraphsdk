@@ -72,3 +72,51 @@ def test_wrapped_native_openai_preserves_result_and_records_searches():
         assert rows.rows[0]["web_search_calls"] == 3
     finally:
         set_runtime(None)
+
+
+def provider_record(provider, response, chunks=None, request=None):
+    rows = Rows()
+    runtime = Runtime(rows, Options(capture_text=False))
+    runtime.call_state(provider, "responses.create", {"model": "example-model", **(request or {})}).finish(response, stream_chunks=chunks)
+    return rows.rows[0]
+
+
+def test_anthropic_keeps_latest_explicit_usage_including_zero():
+    chunks = [{"message": {"usage": {"server_tool_use": {"web_search_requests": 0}}}},
+              {"usage": {"server_tool_use": {"web_search_requests": 2, "web_fetch_requests": 1}}}]
+    assert provider_record("anthropic", {}, chunks)["server_tool_use"] == {"web_search_requests": 2, "web_fetch_requests": 1}
+    assert provider_record("anthropic", {"usage": {"server_tool_use": {"web_search_requests": 0}}})["server_tool_use"] == {"web_search_requests": 0}
+
+
+def test_google_deduplicates_nonempty_stream_grounding_queries():
+    chunks = [{"candidates": [{"groundingMetadata": {"webSearchQueries": ["one", "", "one"]}}]},
+              {"candidates": [{"grounding_metadata": {"web_search_queries": ["one", "two", " "]}}]}]
+    row = provider_record("google", {}, chunks)
+    assert row["grounding_queries"] == 2 and row["grounded_prompt"] == 1
+    assert provider_record("google", {}).get("grounding_queries") is None
+
+
+def test_perplexity_prefers_invocation_usage_and_preserves_api_and_type():
+    response = {"output": [{"type": "search_results"}], "usage": {"tool_calls_details": {"search_web": {"invocation": 3}}}}
+    row = provider_record("perplexity", response, request={"tools": [{"type": "web_search", "search_type": "fast"}]})
+    assert row["web_search_calls"] == 3 and row["retrieval_api"] == "agent" and row["search_type"] == "fast"
+    assert provider_record("perplexity", {"output": [{"type": "search_results"}, {"type": "search_results"}]})["web_search_calls"] == 2
+    assert provider_record("perplexity", {"output": [], "usage": {"tool_calls_details": {"search_web": {"invocation": 0}}}})["web_search_calls"] == 0
+    assert provider_record("perplexity", {}).get("web_search_calls") is None
+
+
+def test_perplexity_openai_compatible_client_keeps_provider_identity():
+    import httpx
+    from openai import OpenAI
+    import metergraph
+    from metergraph._capture import set_runtime
+    rows = Rows()
+    set_runtime(Runtime(rows, Options(capture_text=False)))
+    body = {"id": "resp_search", "object": "response", "model": "perplexity/sonar", "status": "completed", "output": [{"type": "search_results"}]}
+    try:
+        with OpenAI(api_key="test", base_url="https://api.perplexity.ai", max_retries=0, http_client=httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=body)))) as client:
+            metergraph.wrap(client).responses.create(model="perplexity/sonar", input="Synthetic")
+        assert len(rows.rows) == 1 and rows.rows[0]["provider"] == "perplexity"
+        assert rows.rows[0]["web_search_calls"] == 1
+    finally:
+        set_runtime(None)

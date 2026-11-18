@@ -1,3 +1,4 @@
+import { retrievalUsage } from "./retrieval.js";
 import { modelEvidence } from "./model-evidence.js";
 
 import { randomBytes } from "node:crypto";
@@ -108,32 +109,6 @@ function number(value: unknown): number | undefined {
   if (typeof value === "boolean") return undefined;
   const parsed = Number(value);
   return value == null || !Number.isSafeInteger(parsed) || parsed < 0 ? undefined : parsed;
-}
-
-// Preserve billable search counts before the native response is reduced/redacted.
-function webSearchCalls(response: unknown, chunks: unknown[] = []): number | undefined {
-  let output = get(response, "output");
-  if (!Array.isArray(output)) {
-    for (let index = chunks.length - 1; index >= 0; index--) {
-      const chunk = chunks[index];
-      if (["response.completed", "response.incomplete", "response.failed"].includes(String(get(chunk, "type")))) {
-        output = get(get(chunk, "response"), "output");
-        if (Array.isArray(output)) break;
-      }
-    }
-  }
-  if (Array.isArray(output)) {
-    return output.filter((item) => get(item, "type") === "web_search_call").length;
-  }
-  const searches = new Set<unknown>();
-  for (const chunk of chunks) {
-    const item = get(chunk, "item");
-    if (get(chunk, "type") === "response.output_item.done" && get(item, "type") === "web_search_call") {
-      const id = get(item, "id") ?? get(chunk, "output_index");
-      if (id !== undefined) searches.add(id);
-    }
-  }
-  return searches.size || undefined;
 }
 
 function usageValue(value: unknown): Record<string, number | undefined> {
@@ -951,7 +926,7 @@ export class CaptureRuntime {
       provider: state.provider,
       model: state.request.model,
       ...usage(response),
-      ...(state.provider === "openai" ? { web_search_calls: webSearchCalls(response, extra.responseChunks) } : {}),
+      ...retrievalUsage(state.provider, state.endpoint, state.request, response, extra.responseChunks),
       // The Batch API confirms billing even when its body reports a default tier.
       service_tier: state.endpoint.startsWith("batch.") && response != null
         && !extra.error && extra.status !== "error"

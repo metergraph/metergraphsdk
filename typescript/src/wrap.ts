@@ -743,9 +743,12 @@ export const SEAM_TABLES: Record<string, Seam[]> = {
   google: GOOGLE_SEAMS,
 };
 
-function detectProvider(client: AnyRecord): "openai" | "anthropic" | "google" {
+function detectProvider(client: AnyRecord): "openai" | "anthropic" | "google" | "perplexity" {
   if (client.models?.generateContent) return "google";
-  if (client.chat || client.responses) return "openai";
+  if (client.chat || client.responses) {
+    try { if (new URL(String(client.baseURL)).hostname === "api.perplexity.ai") return "perplexity"; } catch {}
+    return "openai";
+  }
   return "anthropic";
 }
 
@@ -760,7 +763,7 @@ function resolveSeam(client: AnyRecord, path: string): AnyRecord | undefined {
 
 function applySeams(client: AnyRecord, provider: string, gatewayName?: string): string[] {
   const patched: string[] = [];
-  for (const seam of SEAM_TABLES[provider] ?? []) {
+  for (const seam of SEAM_TABLES[provider === "perplexity" ? "openai" : provider] ?? []) {
     let owner: AnyRecord | undefined;
     try {
       owner = resolveSeam(client, seam.path);
@@ -786,7 +789,7 @@ function applyBatchExtras(client: AnyRecord, provider: string): number {
   return patched;
 }
 
-export type ProviderName = "openai" | "anthropic" | "google";
+export type ProviderName = "openai" | "anthropic" | "google" | "perplexity";
 
 // A gateway override requires the OpenAI-compatible contract, so at the type
 // level `gateway` is allowed only when `provider` is absent or "openai".
