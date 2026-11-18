@@ -5,6 +5,7 @@ import {
   contextSnapshot,
   setDefaultTags,
   setSession,
+  setUser,
   setTags,
   withContext,
   withSession,
@@ -16,11 +17,11 @@ test("overlapping jobs keep session and tags isolated", async () => {
   const gate = new Promise((resolve) => { release = resolve; });
   const seen = [];
 
-  const first = withContext({ sessionId: "job-a", tags: { customer: "a" } }, async () => {
+  const first = withContext({ userId: "user-a", sessionId: "job-a", metadata: { customer: "a" } }, async () => {
     await gate;
     seen.push(contextSnapshot());
   });
-  const second = withContext({ sessionId: "job-b", tags: { customer: "b" } }, async () => {
+  const second = withContext({ userId: "user-b", sessionId: "job-b", metadata: { customer: "b" } }, async () => {
     release();
     await new Promise((resolve) => setTimeout(resolve, 0));
     seen.push(contextSnapshot());
@@ -32,6 +33,57 @@ test("overlapping jobs keep session and tags isolated", async () => {
     ["job-b", "b"],
   ]);
   assert.equal(contextSnapshot().sessionId, undefined);
+  assert.deepEqual(seen.map(({ userId }) => userId).sort(), ["user-a", "user-b"]);
+});
+
+test("user and metadata inherit, override, clear and restore", () => {
+  const values = { customer_id: "first", priority: "metadata" };
+  setDefaultTags({ service: "backend" });
+  try {
+    withContext({ userId: " person ", sessionId: "session", tags: { priority: 7 }, metadata: values }, () => {
+      values.customer_id = "mutated";
+      assert.deepEqual(contextSnapshot().tags, { service: "backend", priority: "metadata", customer_id: "first" });
+      withContext({ metadata: { customer_id: 9, new: "yes" } }, () => {
+        assert.equal(contextSnapshot().userId, " person ");
+        assert.equal(contextSnapshot().tags.customer_id, "first");
+        setUser("child");
+        setUser(3);
+        assert.equal(contextSnapshot().userId, "child");
+        setUser();
+        setSession();
+        assert.equal(contextSnapshot().userId, undefined);
+        assert.equal(contextSnapshot().sessionId, undefined);
+      });
+      assert.equal(contextSnapshot().userId, " person ");
+      assert.equal(contextSnapshot().sessionId, "session");
+    });
+    setUser("outside");
+    assert.equal(contextSnapshot().userId, undefined);
+  } finally { setDefaultTags({}); }
+});
+
+test("attribution bounds preserve strings and Unicode codepoint order", () => {
+  const values = Object.fromEntries(Array.from({ length: 31 }, (_, i) => [`a${String(i).padStart(2, "0")}`, "v"]));
+  Object.assign(values, { "😀": "astral", "～": "bmp", api_key: "secret" });
+  withContext({ userId: "🙂".repeat(512), metadata: values }, () => {
+    assert.equal(contextSnapshot().userId, "🙂".repeat(512));
+    const tags = contextSnapshot().tags;
+    assert.equal(Object.keys(tags).length, 32);
+    assert.equal(tags["～"], "bmp");
+    assert.equal(tags["😀"], undefined);
+    assert.equal(tags.api_key, undefined);
+    withContext({ userId: "\0", metadata: { bad: "\ud800", nested: {}, ok: "" } }, () => {
+      assert.equal(contextSnapshot().userId, "🙂".repeat(512));
+      assert.equal(contextSnapshot().tags.bad, undefined);
+      assert.equal(contextSnapshot().tags.nested, undefined);
+    });
+  });
+  withContext({ userId: "\u0085", metadata: Object.fromEntries(Array.from({ length: 32 }, (_, i) => [`k${i}`, "🙂".repeat(1000)])) }, () => {
+    assert.equal(contextSnapshot().userId, undefined);
+    const tags = contextSnapshot().tags;
+    assert.ok(Object.keys(tags).length > 0 && Object.keys(tags).length < 32);
+    assert.ok(Buffer.byteLength(JSON.stringify(tags)) <= 65536);
+  });
 });
 
 test("nested helpers derive child contexts and restore parents after errors", async () => {

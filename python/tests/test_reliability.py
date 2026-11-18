@@ -12,9 +12,13 @@ def test_capture_emits_native_evidence_without_content_or_extra_calls():
     client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=lambda **kw: response)))
     try:
         metergraph.wrap(client, provider='openai')
-        assert client.chat.completions.create(model='example-model', messages=[]) is response
+        with metergraph.context(user_id="person", metadata={"customer_id": "customer"}):
+            assert client.chat.completions.create(model='example-model', messages=[]) is response
         assert len(rows.rows) == 1
         row = rows.rows[0]
+        assert row["user_id"] == "person"
+        assert row["tags"] == {"customer_id": "customer"}
+        assert "metadata" not in row
         assert 'availability' not in row and 'refused' not in row
         assert row['otel']['finish_reasons'] == ['content_filter']
         assert row['refusal_signal'] is None
@@ -22,6 +26,28 @@ def test_capture_emits_native_evidence_without_content_or_extra_calls():
         assert row['response_text'] is None
     finally:
         _capture.set_runtime(None)
+
+
+def test_capture_snapshots_attribution_and_leaves_historical_batches_unattributed():
+    from metergraph._capture import Runtime, Options
+    from metergraph._context import CaptureContext
+
+    class Rows:
+        def __init__(self): self.rows = []
+        def enqueue(self, row): self.rows.append(row); return True
+
+    rows = Rows()
+    runtime = Runtime(rows, Options(capture_text=False))
+    values = {"customer_id": "before"}
+    context = CaptureContext(user_id="person", tags=values)
+    call = runtime.call_state("openai", "chat.completions", {"model": "example-model"}, context=context)
+    values["customer_id"] = "after"
+    call.finish({"choices": []}, stream=True)
+    assert rows.rows[0]["user_id"] == "person"
+    assert rows.rows[0]["tags"] == {"customer_id": "before"}
+    batch = runtime.call_state("openai", "batch.responses", {"model": "example-model"}, context=context)
+    batch.finish({"output": []})
+    assert "user_id" not in rows.rows[1]
 
 
 def test_stream_refusal_survives_terminal_usage_chunk():

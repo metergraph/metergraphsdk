@@ -7,6 +7,7 @@ import {
 } from "ai";
 import {
   setDefaultTags,
+  setUser,
   vercelAISDKMiddleware,
   withContext,
   withSession,
@@ -40,6 +41,11 @@ void middleware;
 void configuredMiddleware;
 setDefaultTags({ service: "worker" });
 void withContext({ sessionId: "run-1", tags: { customer: 42 } }, async () => "done");
+void withContext({ userId: "person", metadata: { customer_id: "customer" } }, () => setUser());
+// @ts-expect-error Metadata values must be strings; legacy tags still stringify.
+withContext({ metadata: { customer_id: 42 } }, () => {});
+// @ts-expect-error User identity is an opaque string, not a number.
+setUser(42);
 void withSession("run-1", async () => "done");
 void withTags({ customer: 42 }, async () => "done");
 void factoryModel;

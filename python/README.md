@@ -28,8 +28,9 @@ metergraph.init(repository="owner/repository")
 client = metergraph.wrap(OpenAI())
 
 with metergraph.context(
+    user_id="user-123",
     session_id="ticket-123",
-    tags={"customer": "acme"},
+    metadata={"customer_id": "customer-123"},
 ):
     with metergraph.trace("ticket-workflow"):
         with metergraph.route("ticket-classifier", unit="answer"):
@@ -54,7 +55,24 @@ workers cannot leak session IDs or tags into one another. The narrower
 `metergraph.session()` and `metergraph.tags()` scopes compose with it.
 `metergraph.set_default_tags()` sets process-wide service metadata. Legacy
 `set_session()` and `set_tags()` calls only update an active Metergraph scope;
-outside one they warn once and do nothing.
+outside one they warn once and do nothing. `set_user("user-123")` updates the
+active scope; `set_user()` clears it until that scope exits. Omitted or `None`
+user/session arguments inherit their parent. Identity is never process-wide.
+
+`metadata` accepts flat string pairs and shares the existing `tags` wire field.
+Valid local metadata overrides local tags and inherited/default values; legacy
+tags still stringify values. Maps are copied so later caller mutations do not
+change captured calls. Invalid user IDs or metadata pairs are omitted with one
+generic warning, without logging their values. User IDs are at most 512 Unicode
+code points and cannot be blank. Metadata keeps up to 32 valid pairs in Unicode
+key order, with keys up to 200 and values up to 1,000 code points, within 64 KiB
+of compact UTF-8 JSON. NUL, lone surrogates and credential-like keys are omitted.
+Attribution remains available when prompt capture is off and is not added to
+provider request parameters. Historical batch-result downloads leave `user_id`
+unset because the submitting user is unknown; existing batch tags are unchanged.
+Automatic OpenTelemetry user/metadata mapping is not part of this interface.
+Deploy compatible ingestion before relying on user attribution; older collectors
+may ignore the optional `user_id` field.
 
 Vercel's supported Python surface is AI Gateway through the OpenAI or
 Anthropic SDK. Point either client at the public gateway and `wrap()` detects

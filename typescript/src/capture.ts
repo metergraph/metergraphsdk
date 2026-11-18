@@ -765,7 +765,7 @@ export class CaptureRuntime {
       provider,
       endpoint,
       request,
-      context,
+      context: { ...context, tags: { ...context.tags } },
       started: performance.now(),
       ts: new Date().toISOString(),
       frames: frames(stack, this.options.appRoot, this.options.skipFrames, this.options.repoRoot),
@@ -942,6 +942,9 @@ export class CaptureRuntime {
         stream_chunks: extra.evidenceChunks ?? extra.responseChunks, stream_complete: extra.stream === true && extra.error === undefined && extra.status !== "error" && extra.status !== "abandoned" }),
       session_id: state.context.sessionId,
       conversation_id: state.context.sessionId,
+      // Downloading historical batch results does not establish their owner.
+      ...(state.context.userId !== undefined && !state.endpoint.startsWith("batch.")
+        ? { user_id: state.context.userId } : {}),
       trace_id: state.traceId,
       span_id: state.spanId,
       parent_span_id: state.parentSpanId,
