@@ -14,7 +14,7 @@ import sys
 import threading
 import time
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping
@@ -938,6 +938,7 @@ class Runtime:
         gateway: str | None = None,
     ) -> "CallState":
         context = context or snapshot()
+        context = replace(context, tags=dict(context.tags))
         func, module, frames = _capture_frames(
             self.options.app_root,
             (
@@ -1172,6 +1173,9 @@ class CallState:
                 stream_complete=stream and error is None and status not in {"error", "abandoned"}, refusal_signal=self.context.refusal_signal),
             "session_id": self.context.session_id,
             "conversation_id": self.context.session_id,
+            # Downloading historical batch results does not establish their owner.
+            **({"user_id": self.context.user_id} if self.context.user_id is not None
+               and not self.endpoint.startswith("batch.") else {}),
             "trace_id": self.trace_id,
             "span_id": self.span_id,
             "parent_span_id": self.parent_span_id,

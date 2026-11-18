@@ -111,6 +111,8 @@ test("published tarball supports CommonJS, ESM, and mixed loading", async () => 
 const metergraph = require("metergraph");
 assert.equal(typeof metergraph.init, "function");
 assert.equal(typeof metergraph.wrap, "function");
+assert.equal(typeof metergraph.setUser, "function");
+metergraph.withContext({ userId: "person", metadata: { customer_id: "customer" } }, () => metergraph.setUser());
 assert.equal(typeof metergraph.vercelAISDKMiddleware, "function");
 `,
     );
@@ -120,6 +122,8 @@ assert.equal(typeof metergraph.vercelAISDKMiddleware, "function");
 import * as metergraph from "metergraph";
 assert.equal(typeof metergraph.init, "function");
 assert.equal(typeof metergraph.wrap, "function");
+assert.equal(typeof metergraph.setUser, "function");
+metergraph.withContext({ userId: "person", metadata: { customer_id: "customer" } }, () => metergraph.setUser());
 assert.equal(typeof metergraph.vercelAISDKMiddleware, "function");
 `,
     );

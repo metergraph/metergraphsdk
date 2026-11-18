@@ -7,6 +7,7 @@ import path from "node:path";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 for (const [folder, name] of [
+  ["attribution/user-context", "main.mjs"],
   ["integrations/frameworks/vercel-ai/provider-registry", "main.mjs"],
   ["integrations/frameworks/vercel-ai/existing-factory", "main.mjs"],
   ["integrations/providers/openrouter/typescript", "main.mjs"],

@@ -5,7 +5,9 @@ from __future__ import annotations
 import contextvars
 import functools
 import inspect
+import json
 import logging
+import re
 import secrets
 from concurrent.futures import Executor
 from dataclasses import dataclass, field, replace
@@ -28,6 +30,7 @@ class CaptureContext:
     trace_id: str | None = None
     trace_name: str | None = None
     parent_span_id: str | None = None
+    user_id: str | None = None
 
 
 _current: contextvars.ContextVar[CaptureContext] = contextvars.ContextVar(
@@ -39,13 +42,74 @@ _active_depth: contextvars.ContextVar[int] = contextvars.ContextVar(
 _default_tags: dict[str, str] = {}
 _warned_session_outside_scope = False
 _warned_tags_outside_scope = False
+_warned_user_outside_scope = False
+_warned_attribution = False
 log = logging.getLogger("metergraph")
+
+# Match hosted attribution bounds without adding a dependency or wire field.
+_BAD_TEXT = re.compile("[\x00\ud800-\udfff]")
+_CREDENTIAL_KEY = re.compile(
+    r"(?:accesskey|apikey|auth|authorization|bearer|clientsecret|cookie|credentials?|"
+    r"encryptionkey|jwt|passwd|password|privatekey|secretkey|secret|sessionkey|signingkey|token)$"
+)
+
+
+def _omitted() -> None:
+    global _warned_attribution
+    if not _warned_attribution:
+        _warned_attribution = True
+        log.warning("Metergraph omitted invalid or excess attribution; use bounded string identifiers and metadata.")
+
+
+def _user(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str) and 0 < len(value) <= 512 and not value.isspace() and not _BAD_TEXT.search(value):
+        return value
+    _omitted()
+    return None
+
+
+def _tag_values(values: Any, *, legacy: bool = False) -> dict[str, str]:
+    if values is None:
+        return {}
+    if not isinstance(values, Mapping):
+        _omitted()
+        return {}
+    clean = {}
+    for key, value in values.items():
+        if legacy:
+            try:
+                key, value = str(key), str(value)
+            except Exception:
+                _omitted()
+                continue
+        if (isinstance(key, str) and 0 < len(key) <= 200 and not _BAD_TEXT.search(key)
+                and not _CREDENTIAL_KEY.search(re.sub("[^a-z0-9]", "", key.lower()))
+                and isinstance(value, str) and len(value) <= 1000 and not _BAD_TEXT.search(value)):
+            clean[key] = value
+        else:
+            _omitted()
+    return clean
+
+
+def _bound_tags(values: Mapping[str, str]) -> dict[str, str]:
+    clean = {}
+    size = 2
+    for key in sorted(values):
+        added = len(json.dumps({key: values[key]}, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) - 2 + bool(clean)
+        if len(clean) == 32 or size + added > 65536:
+            _omitted()
+            break
+        clean[key] = values[key]
+        size += added
+    return clean
 
 
 def snapshot() -> CaptureContext:
     current = _current.get()
     if _active_depth.get() == 0 and _default_tags:
-        return replace(current, tags={**_default_tags, **current.tags})
+        return replace(current, tags=_bound_tags({**_default_tags, **current.tags}))
     return current
 
 
@@ -68,9 +132,12 @@ class context:
         session_id: str | None = None,
         tags: Mapping[str, Any] | None = None,
         refusal_signal: bool | None = None,
+        user_id: str | None = None,
+        metadata: Mapping[str, str] | None = None,
     ) -> None:
         self.session_id = str(session_id) if session_id is not None else None
-        self.tags = {str(k): str(v) for k, v in (tags or {}).items()}
+        self.tags = {**_tag_values(tags, legacy=True), **_tag_values(metadata)}
+        self.user_id = _user(user_id)
         self.refusal_signal = refusal_signal if type(refusal_signal) is bool else None
         self._tokens = None
 
@@ -84,7 +151,8 @@ class context:
                     if self.session_id is not None
                     else current.session_id
                 ),
-                tags={**current.tags, **self.tags},
+                user_id=self.user_id if self.user_id is not None else current.user_id,
+                tags=_bound_tags({**current.tags, **self.tags}),
                 refusal_signal=self.refusal_signal if self.refusal_signal is not None else current.refusal_signal,
             )
         )
@@ -100,14 +168,14 @@ class context:
 
             @functools.wraps(fn)
             async def async_wrapped(*args, **kwargs):
-                with type(self)(session_id=self.session_id, tags=self.tags, refusal_signal=self.refusal_signal):
+                with type(self)(session_id=self.session_id, tags=self.tags, user_id=self.user_id, refusal_signal=self.refusal_signal):
                     return await fn(*args, **kwargs)
 
             return async_wrapped
 
         @functools.wraps(fn)
         def wrapped(*args, **kwargs):
-            with type(self)(session_id=self.session_id, tags=self.tags, refusal_signal=self.refusal_signal):
+            with type(self)(session_id=self.session_id, tags=self.tags, user_id=self.user_id, refusal_signal=self.refusal_signal):
                 return fn(*args, **kwargs)
 
         return wrapped
@@ -126,7 +194,7 @@ def tags(**values: Any) -> context:
 def set_default_tags(**values: Any) -> None:
     """Replace process-wide tags inherited by new Metergraph scopes."""
     global _default_tags
-    _default_tags = {str(k): str(v) for k, v in values.items()}
+    _default_tags = _bound_tags(_tag_values(values, legacy=True))
 
 
 class route:
@@ -146,7 +214,7 @@ class route:
         self.unit_count = (
             float(unit_count) if unit_count is not None else (1.0 if unit else None)
         )
-        self.tags = {str(k): str(v) for k, v in (tags or {}).items()}
+        self.tags = _tag_values(tags, legacy=True)
         self.capture_text = (
             bool(capture_text) if capture_text is not None else None
         )
@@ -154,7 +222,7 @@ class route:
 
     def __enter__(self) -> "route":
         current = snapshot()
-        merged = {**current.tags, **self.tags}
+        merged = _bound_tags({**current.tags, **self.tags})
         self._tokens = _enter_scope(
             replace(
                 current,
@@ -292,6 +360,19 @@ class trace:
         return wrapped
 
 
+def set_user(user_id: str | None = None) -> None:
+    """Set or clear the user in the active scope; never create global identity."""
+    global _warned_user_outside_scope
+    if _active_depth.get() == 0:
+        if not _warned_user_outside_scope:
+            _warned_user_outside_scope = True
+            log.warning("metergraph.set_user() requires an active Metergraph context; use metergraph.context().")
+        return
+    value = _user(user_id)
+    if user_id is None or value is not None:
+        _current.set(replace(snapshot(), user_id=value))
+
+
 def set_session(session_id: str | None) -> None:
     global _warned_session_outside_scope
     if _active_depth.get() == 0:
@@ -318,7 +399,7 @@ def set_tags(**tags: Any) -> None:
             )
         return
     current = snapshot()
-    merged = {**current.tags, **{str(k): str(v) for k, v in tags.items()}}
+    merged = _bound_tags({**current.tags, **_tag_values(tags, legacy=True)})
     _current.set(replace(current, tags=merged))
 
 

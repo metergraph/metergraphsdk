@@ -36,11 +36,13 @@ test("capture preserves response identity and emits native evidence without cont
   };
   try {
     wrap(client, { provider: "openai" });
-    assert.equal(
-      client.chat.completions.create({ model: "example-model", messages: [] }),
-      response,
-    );
+    withContext({ userId: "person", metadata: { customer_id: "customer" } }, () => {
+      assert.equal(client.chat.completions.create({ model: "example-model", messages: [] }), response);
+    });
     assert.equal(rows.length, 1);
+    assert.equal(rows[0].user_id, "person");
+    assert.deepEqual(rows[0].tags, { customer_id: "customer" });
+    assert.equal("metadata" in rows[0], false);
     assert.equal("availability" in rows[0], false);
     assert.equal("refused" in rows[0], false);
     assert.deepEqual(rows[0].otel.finish_reasons, ["content_filter"]);
@@ -50,6 +52,23 @@ test("capture preserves response identity and emits native evidence without cont
   } finally {
     setCaptureRuntime();
   }
+});
+
+test("capture snapshots attribution and leaves historical batches unattributed", () => {
+  const rows = [];
+  const runtime = new CaptureRuntime({ enqueue(row) { rows.push(row); return true; } }, {
+    captureText: false, appRoot: "", skipFrames: [], textMaxBytes: DEFAULT_TEXT_MAX_BYTES,
+  });
+  const context = { userId: "person", tags: { customer_id: "before" } };
+  const call = runtime.start("openai", "chat.completions", { model: "example-model" }, undefined, context);
+  context.tags.customer_id = "after";
+  context.userId = "after";
+  runtime.finish(call, { choices: [] }, { stream: true });
+  assert.equal(rows[0].user_id, "person");
+  assert.deepEqual(rows[0].tags, { customer_id: "before" });
+  const batch = runtime.start("openai", "batch.responses", { model: "example-model" }, undefined, context);
+  runtime.finish(batch, { output: [] });
+  assert.equal("user_id" in rows[1], false);
 });
 
 test("stream refusal survives a terminal usage-only chunk", async () => {

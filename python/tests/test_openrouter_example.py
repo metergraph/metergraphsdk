@@ -192,8 +192,13 @@ def test_python_openrouter_example_offline_contract(monkeypatch):
         gateway_rows = [r for r in rows if r.get("gateway") == "openrouter"]
         # Exactly two: one non-stream, one stream. No duplicate capture.
         assert len(gateway_rows) == 2
+        assert len({r["trace_id"] for r in gateway_rows}) == 1
         assert {bool(r["stream"]) for r in gateway_rows} == {False, True}
         for row in gateway_rows:
+            assert row["user_id"] == "user-123"
+            assert row["session_id"] == "session-123"
+            assert row["tags"]["customer_id"] == "customer-123"
+            assert row["tags"]["mode"] == ("streaming" if row["stream"] else "nonstreaming")
             assert row["provider"] == "openai"
             assert row["model"] == SERVED_MODEL
             assert row["served_model"] == SERVED_MODEL

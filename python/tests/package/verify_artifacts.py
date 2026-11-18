@@ -114,13 +114,15 @@ import metergraph
 
 required = {
     "init", "wrap", "route", "trace", "context", "session", "tags",
-    "set_default_tags", "set_session", "set_tags",
+    "set_default_tags", "set_session", "set_user", "set_tags",
     "flush", "shutdown", "model_for", "record_outcome", "batch_first",
 }
 assert required <= set(metergraph.__all__)
 assert required <= set(dir(metergraph))
 assert Path(metergraph.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())
 assert importlib.metadata.version("metergraph") == metergraph.__version__
+with metergraph.context(user_id="person", metadata={"customer_id": "customer"}):
+    metergraph.set_user()
 metergraph.init(disabled=True)
 assert metergraph.flush()
 metergraph.shutdown()

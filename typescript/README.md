@@ -28,7 +28,7 @@ active; later explicit calls are ignored and produce one generic warning
 without option names, token values, or other secrets.
 
 ```ts
-import { init, wrap, route, trace, modelFor, recordOutcome, withSession } from "metergraph";
+import { init, wrap, route, trace, modelFor, recordOutcome, withContext, withSession } from "metergraph";
 import OpenAI from "openai";
 
 init({ repository: "owner/repository" });
@@ -54,12 +54,36 @@ await withSession("ticket-123", async () => {
 });
 ```
 
-Use `withContext({ sessionId, tags }, fn)`, `withSession(sessionId, fn)`, or
+Use `withContext({ userId, sessionId, metadata }, fn)`, `withSession(sessionId, fn)`, or
 `withTags(tags, fn)` for request and job identity. These callback scopes follow
 Node's asynchronous execution and isolate concurrent jobs. Legacy
 `setSession()` and `setTags()` remain available inside an active Metergraph
 scope, but warn and do nothing when called outside one. Use `setDefaultTags()`
 only for deliberate process-wide tags; sessions are always execution-scoped.
+
+```ts
+await withContext({
+  userId: "user-123",
+  sessionId: "ticket-123",
+  metadata: { customer_id: "customer-123" },
+}, async () => client.chat.completions.create({ model, messages: [] }));
+```
+
+`setUser("user-123")` updates an active scope; `setUser()` clears it until that
+scope exits. Omitted user/session arguments inherit. User identity is never
+process-wide. `metadata` accepts flat string pairs and shares the existing
+`tags` wire field. Valid local metadata overrides local tags and inherited or
+default values; legacy tags still stringify. Captured calls hold copied maps.
+
+Invalid attribution is omitted with one generic warning that contains no
+submitted values. User IDs are nonblank strings of at most 512 Unicode code
+points. Metadata keeps up to 32 valid pairs in Unicode key order, keys up to
+200 and values up to 1,000 code points, within 64 KiB compact UTF-8 JSON. NUL,
+lone surrogates and credential-like keys are omitted. Attribution remains when
+prompt capture is off and is not added to provider requests. Historical batch
+downloads leave `user_id` unset because submission identity is unknown;
+existing batch tags are unchanged. Deploy compatible ingestion before relying
+on user attribution; older collectors may ignore the optional `user_id` field.
 
 ## OpenRouter
 

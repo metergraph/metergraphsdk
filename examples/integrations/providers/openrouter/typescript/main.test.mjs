@@ -104,8 +104,13 @@ test("node-openrouter example: native results and captured wire rows (offline)",
   const rows = batches.flatMap((batch) => batch.rows ?? []);
   const gatewayRows = rows.filter((row) => row.gateway === "openrouter");
   assert.equal(gatewayRows.length, 2);
+  assert.equal(new Set(gatewayRows.map((row) => row.trace_id)).size, 1);
   assert.deepEqual(new Set(gatewayRows.map((row) => Boolean(row.stream))), new Set([false, true]));
   for (const row of gatewayRows) {
+    assert.equal(row.user_id, "user-123");
+    assert.equal(row.session_id, "session-123");
+    assert.equal(row.tags.customer_id, "customer-123");
+    assert.equal(row.tags.mode, row.stream ? "streaming" : "nonstreaming");
     assert.equal(row.provider, "openai");
     assert.equal(row.model, SERVED_MODEL);
     assert.equal(row.served_model, SERVED_MODEL);
