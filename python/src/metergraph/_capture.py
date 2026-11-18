@@ -104,6 +104,29 @@ def _first(value: Any) -> Any:
         return None
 
 
+def _web_search_calls(response: Any, chunks: list[Any] | None = None) -> int | None:
+    """Preserve billable counts before reducing/redacting the native response."""
+    output = _get(response, "output")
+    if not isinstance(output, list):
+        for chunk in reversed(chunks or []):
+            if _get(chunk, "type") in {"response.completed", "response.incomplete", "response.failed"}:
+                output = _get(_get(chunk, "response"), "output")
+                if isinstance(output, list):
+                    break
+    if isinstance(output, list):
+        return sum(_get(item, "type") == "web_search_call" for item in output)
+    searches = set()
+    for chunk in chunks or []:
+        item = _get(chunk, "item")
+        if _get(chunk, "type") == "response.output_item.done" and _get(item, "type") == "web_search_call":
+            id = _get(item, "id")
+            if id is None:
+                id = _get(chunk, "output_index")
+            if id is not None:
+                searches.add(id)
+    return len(searches) or None
+
+
 def _int(value: Any) -> int | None:
     try:
         if value is None or isinstance(value, bool):
@@ -1153,6 +1176,8 @@ class CallState:
             "provider": self.provider,
             "model": self.request.get("model"),
             **_usage(response),
+            **({"web_search_calls": _web_search_calls(response, stream_chunks)}
+               if self.provider == "openai" else {}),
             # Batch transport confirms billing even if the body reports a default tier.
             "service_tier": (
                 "batch" if self.endpoint.startswith("batch.") and response is not None
