@@ -121,7 +121,7 @@ function usageValue(value: unknown): Record<string, number | undefined> {
   const aiInputDetails = get(value, "inputTokenDetails");
   const aiOutputDetails = get(value, "outputTokenDetails");
   const cacheCreation = get(value, "cache_creation") ?? get(value, "cacheCreation");
-  return {
+  const counts = {
     input_tokens: number(get(value, "prompt_tokens") ?? get(value, "input_tokens")
       ?? get(value, "promptTokenCount") ?? get(aiInput, "total") ?? aiInput),
     output_tokens: number(get(value, "completion_tokens") ?? get(value, "output_tokens")
@@ -141,6 +141,14 @@ function usageValue(value: unknown): Record<string, number | undefined> {
       ?? get(value, "thoughtsTokenCount") ?? get(aiOutput, "reasoning")
       ?? get(aiOutputDetails, "reasoningTokens")),
   };
+  // Native Gemini reports tool context and thinking outside its prompt/candidate counts.
+  if (number(get(value, "promptTokenCount")) !== undefined) {
+    counts.input_tokens = number(get(value, "promptTokenCount"))! + (number(get(value, "toolUsePromptTokenCount")) ?? 0);
+  }
+  if (number(get(value, "candidatesTokenCount")) !== undefined) {
+    counts.output_tokens = number(get(value, "candidatesTokenCount"))! + (number(get(value, "thoughtsTokenCount")) ?? 0);
+  }
+  return counts;
 }
 
 function usage(response: unknown): Record<string, number | undefined> {

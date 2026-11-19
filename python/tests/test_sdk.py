@@ -405,7 +405,7 @@ def test_wrap_google_records_usage_and_endpoint(tmp_path):
     assert row["endpoint"] == "models.generate_content"
     assert row["model"] == "gemini-test"
     assert row["input_tokens"] == 100
-    assert row["output_tokens"] == 20
+    assert row["output_tokens"] == 25
     assert row["cache_read_tokens"] == 10
     assert row["reasoning_tokens"] == 5
     assert captured_response(row)["content"] == "gemini done"
@@ -507,7 +507,7 @@ def test_wrap_google_stream_takes_usage_from_cumulative_last_chunk(tmp_path):
     assert row["stream"] is True
     assert row["ttft_ms"] is not None
     assert row["input_tokens"] == 100
-    assert row["output_tokens"] == 20
+    assert row["output_tokens"] == 25
     assert row["cache_read_tokens"] == 10
     assert captured_response(row)["content"] == "partial"
     _capture.set_runtime(None)

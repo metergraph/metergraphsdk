@@ -110,3 +110,13 @@ test("OpenAI batch capture does not invent a requested service tier", async (t) 
   assert.equal(rows[0].requested_service_tier,undefined);
   assert.equal(rows[0].service_tier,"batch");
 });
+
+test("native Gemini usage includes tool context and thinking in billable token totals",async(t)=>{
+  const rows=capture(t);
+  const client=wrap({models:{generateContent:async()=>({modelVersion:"example-model",usageMetadata:{promptTokenCount:100,toolUsePromptTokenCount:7,candidatesTokenCount:10,thoughtsTokenCount:5,cachedContentTokenCount:20,trafficType:"ON_DEMAND_FLEX"}})}},"google");
+  await client.models.generateContent({model:"example-model",contents:"Synthetic"});
+  assert.equal(rows[0].input_tokens,107);
+  assert.equal(rows[0].output_tokens,15);
+  assert.equal(rows[0].reasoning_tokens,5);
+  assert.equal(rows[0].cache_read_tokens,20);
+});
