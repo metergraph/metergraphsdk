@@ -659,3 +659,39 @@ def test_record_outcome_accepts_all_documented_boundaries(monkeypatch):
         abandoned=True,
     ) is True
     assert len(rows.rows) == 1
+
+
+@pytest.mark.parametrize('is_async', [False, True])
+def test_helper_failure_is_recorded_even_when_caller_catches_it_inside_context(is_async):
+    capture, rows = runtime()
+    failure = RuntimeError('fixture stream cut')
+    snapshot = SimpleNamespace(id='msg_partial', usage=SimpleNamespace(input_tokens=100, output_tokens=0))
+
+    class Stream:
+        current_message_snapshot = snapshot
+        request_id = 'req_partial'
+
+        def get_final_message(self):
+            raise failure
+
+    class AsyncNative(Stream):
+        async def get_final_message(self):
+            raise failure
+
+    state = capture.call_state('anthropic', 'messages.stream', {'model': 'example-model'}, context=CaptureContext())
+    if is_async:
+        async def run():
+            async with AsyncStream(AsyncNative(), state) as stream:
+                with pytest.raises(RuntimeError) as caught:
+                    await stream.get_final_message()
+                assert caught.value is failure
+                assert len(rows.rows) == 1
+        asyncio.run(run())
+    else:
+        with SyncStream(Stream(), state) as stream:
+            with pytest.raises(RuntimeError) as caught:
+                stream.get_final_message()
+            assert caught.value is failure
+            assert len(rows.rows) == 1
+    assert rows.rows[0]['error'] is True
+    assert rows.rows[0]['usage_complete'] is False

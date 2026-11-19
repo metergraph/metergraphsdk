@@ -17,6 +17,7 @@ import asyncio
 import json
 
 import httpx
+import pytest
 import metergraph
 from anthropic import AsyncAnthropic
 from google import genai
@@ -698,3 +699,54 @@ def test_real_openai_stream_resume_records_one_row(tmp_path):
     assert [(r["endpoint"], r["status"], r["output_tokens"]) for r in rows.rows] == [
         ("responses", "completed", 45)
     ]
+
+
+@pytest.mark.parametrize('is_async', [False, True])
+def test_interrupted_anthropic_helper_preserves_partial_usage_and_request_id(tmp_path, is_async):
+    partial = {**_TOOL_ONLY_MESSAGE, 'id': 'msg_partial', 'content': [],
+               'stop_reason': None, 'usage': {'input_tokens': 100, 'output_tokens': 0,
+                    'cache_read_input_tokens': 20, 'cache_creation_input_tokens': 10}}
+    body = _sse_body([('message_start', {'type': 'message_start', 'message': partial})])
+    failure = anthropic_httpx.ReadError('fixture stream cut')
+
+    class BrokenStream(anthropic_httpx.SyncByteStream, anthropic_httpx.AsyncByteStream):
+        def __iter__(self):
+            yield body if isinstance(body, bytes) else body.encode()
+            raise failure
+
+        async def __aiter__(self):
+            yield body if isinstance(body, bytes) else body.encode()
+            raise failure
+
+    def handler(request):
+        return anthropic_httpx.Response(200, stream=BrokenStream(),
+            headers={'content-type': 'text/event-stream', 'request-id': 'req_partial'})
+
+    rows = Rows()
+    _capture.set_runtime(Runtime(rows, Options(app_root=str(tmp_path), capture_text=False)))
+    try:
+        client = _anthropic_client(handler, is_async=is_async)
+        metergraph.wrap(client, provider='anthropic')
+        if is_async:
+            async def run():
+                async with client.messages.stream(**_TOOL_REQUEST) as stream:
+                    await stream.get_final_message()
+            with pytest.raises(anthropic_httpx.ReadError) as caught:
+                asyncio.run(run())
+        else:
+            with pytest.raises(anthropic_httpx.ReadError) as caught:
+                with client.messages.stream(**_TOOL_REQUEST) as stream:
+                    stream.get_final_message()
+        assert caught.value is failure
+        assert len(rows.rows) == 1
+        row = rows.rows[0]
+        assert row['error'] is True
+        assert row['input_tokens'] == 100
+        assert row['cache_read_tokens'] == 20
+        assert row['cache_write_tokens'] == 10
+        assert row['request_id'] == 'msg_partial'
+        assert row['http_request_id'] == 'req_partial'
+        assert row['usage_complete'] is False
+        assert row['request_json'] is None
+    finally:
+        _capture.set_runtime(None)
