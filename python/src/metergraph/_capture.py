@@ -2189,7 +2189,7 @@ def _apply_seams(
     gateway_name: str | None = None,
 ) -> list[str]:
     patched: list[str] = []
-    for seam in SEAM_TABLES.get("openai" if provider == "perplexity" else provider, ()):
+    for seam in SEAM_TABLES.get(provider, SEAM_TABLES["openai"]):
         try:
             owner = _resolve(client, seam.path)
         except Exception:

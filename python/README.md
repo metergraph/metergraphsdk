@@ -321,3 +321,5 @@ serverless, call metergraph.flush() before the handler returns. When done,
 list every client you wrapped and flag LLM calls made outside the official
 openai / anthropic / google-genai SDKs, since those are not captured.
 ```
+
+For other OpenAI-compatible clients, pass the actual provider name to `wrap()` (for example, `provider="deepseek"` in Python or `{ provider: "deepseek" }` in TypeScript). Capture uses the OpenAI-compatible methods while preserving that provider identity; no provider SDK dependency or routing change is added.

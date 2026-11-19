@@ -23,9 +23,8 @@ wrap(client, { gateway: "portkey" });
 // @ts-expect-error a non-openai provider cannot combine with gateway
 wrap(client, { provider: "anthropic", gateway: "openrouter" });
 
-// An unknown provider string is rejected.
-// @ts-expect-error unknown provider
-wrap(client, "bedrock");
+// An explicit compatible-provider identity retains the client type.
+const f: typeof client = wrap(client, "example-provider");
 
 // WrapOptions is usable as a named public type.
 const options: WrapOptions = { provider: "openai", gateway: "openrouter" };
@@ -35,4 +34,5 @@ void b;
 void c;
 void d;
 void e;
+void f;
 void options;

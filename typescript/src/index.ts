@@ -32,7 +32,7 @@ import { SessionManager } from "./session.js";
 import { track } from "./track.js";
 import { Transport, type TransportMode, type WaitUntil } from "./transport.js";
 import { SDK_VERSION } from "./version.js";
-import { finishBackgroundCalls, setCaptureRuntime, wrap as wrapProvider, type WrapOptions } from "./wrap.js";
+import { finishBackgroundCalls, setCaptureRuntime, wrap as wrapProvider, type WrapOptions, type ProviderName } from "./wrap.js";
 import {
   createVercelAISDKMiddleware,
   type VercelAISDKMiddleware,
@@ -285,12 +285,12 @@ export function wrapHandler<TArgs extends unknown[], TResult>(
  */
 export function wrap<T extends Record<PropertyKey, any>>(
   client: T,
-  provider?: "openai" | "anthropic" | "google",
+  provider?: ProviderName,
 ): T;
 export function wrap<T extends Record<PropertyKey, any>>(client: T, options: WrapOptions): T;
 export function wrap<T extends Record<PropertyKey, any>>(
   client: T,
-  providerOrOptions?: "openai" | "anthropic" | "google" | WrapOptions,
+  providerOrOptions?: ProviderName | WrapOptions,
 ): T {
   if (!initialized) init();
   return wrapProvider(client, providerOrOptions as WrapOptions);
