@@ -1073,6 +1073,7 @@ class CallState:
         ttft_ms: int | None = None,
         response_text: str | None = None,
         stream_chunks: list[Any] | None = None,
+        http_request_id: str | None = None,
         attributes: Mapping[str, Any] | None = None,
     ) -> None:
         if self.done:
@@ -1195,7 +1196,9 @@ class CallState:
             "tool_calls": tool_calls,
             "tool_names": tool_names,
             "endpoint": self.endpoint,
-            "request_id": _request_id(response),
+            "request_id": _request_id(response) or _get(error, "request_id"),
+            "http_request_id": http_request_id or _get(error, "request_id"),
+            "usage_complete": (not error and status not in {"error", "abandoned"}) if stream else None,
             "batch": self.request.get("batch") is True,
             "batch_custom_id": self.request.get("batch_custom_id"),
             # An explicit false is the application-level sensitive-operation
@@ -1281,10 +1284,23 @@ class _StreamState:
         except Exception:
             return False
 
+    def partial_response(self):
+        try:
+            return getattr(self.stream, "current_message_snapshot", None) or self.last
+        except Exception:
+            return self.last
+
+    def http_request_id(self):
+        try:
+            value = getattr(self.stream, "request_id", None)
+            return value if isinstance(value, str) else None
+        except Exception:
+            return None
+
     def finish(
         self, status: str | None = None, error: BaseException | None = None
     ) -> None:
-        response = self.last
+        response = self.partial_response() if error or status == "abandoned" else self.last
         if not error:
             final = getattr(self.stream, "get_final_message", None)
             if callable(final):
@@ -1305,12 +1321,13 @@ class _StreamState:
             ttft_ms=self.ttft_ms,
             response_text="".join(self.parts) or None,
             stream_chunks=self.chunks,
+            http_request_id=self.http_request_id(),
         )
 
     async def finish_async(
         self, status: str | None = None, error: BaseException | None = None
     ) -> None:
-        response = self.last
+        response = self.partial_response() if error or status == "abandoned" else self.last
         if not error:
             final = getattr(self.stream, "get_final_message", None)
             if callable(final):
@@ -1328,6 +1345,7 @@ class _StreamState:
             ttft_ms=self.ttft_ms,
             response_text="".join(self.parts) or None,
             stream_chunks=self.chunks,
+            http_request_id=self.http_request_id(),
         )
 
     def safe_finish(
@@ -1362,7 +1380,17 @@ class SyncStream:
         self._state = _StreamState(stream, call)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self._state.stream, name)
+        original = getattr(self._state.stream, name)
+        if name != "get_final_message" or not callable(original):
+            return original
+
+        def observed(*args, **kwargs):
+            try:
+                return original(*args, **kwargs)
+            except BaseException as exc:
+                self._state.safe_finish(error=exc)
+                raise
+        return observed
 
     def __iter__(self) -> "SyncStream":
         if self._state.iterator is None:
@@ -1424,7 +1452,17 @@ class AsyncStream:
         self._state = _StreamState(stream, call)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self._state.stream, name)
+        original = getattr(self._state.stream, name)
+        if name != "get_final_message" or not callable(original):
+            return original
+
+        async def observed(*args, **kwargs):
+            try:
+                return await original(*args, **kwargs)
+            except BaseException as exc:
+                await self._state.safe_finish_async(error=exc)
+                raise
+        return observed
 
     def __aiter__(self) -> "AsyncStream":
         if self._state.iterator is None:

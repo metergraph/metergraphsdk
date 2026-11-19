@@ -113,6 +113,8 @@ served model, reported-vs-catalog cost, streaming usage, and the BYOK limitation
 
 Calls record `service_tier` separately from `requested_service_tier`: requesting Flex does not prove it was served. Capture reads OpenAI's response tier, Anthropic's usage tier, and Google's usage tier or traffic type, retaining evidence across trailing stream events. Successful Batch API results record `batch` from the transport, without inventing a requested tier. Missing response evidence stays unknown.
 
+Interrupted Anthropic streams retain available input/cache usage and message IDs, plus `http_request_id` when the SDK exposes it. `usage_complete: false` marks observed usage as incomplete; it does not establish the final charge or mean the request was free.
+
 Search usage is retained independently of text capture: OpenAI search-call counts, Anthropic server-tool usage, and Google grounding-query counts. Perplexity Responses capture uses invocation counters, with search-result items as a fallback. Clients using `https://api.perplexity.ai` are detected automatically; use `metergraph.wrap(client, provider="perplexity")` when a gateway hides the provider. Perplexity Agent and legacy Sonar calls are identified separately. Agent search type is recorded when explicitly set on the tool; missing evidence remains unknown. Prices are resolved by the receiver.
 
 

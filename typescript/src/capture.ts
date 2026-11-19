@@ -797,6 +797,7 @@ export class CaptureRuntime {
       responseText?: string;
       responseChunks?: unknown[];
       evidenceChunks?: unknown[];
+      httpRequestId?: string;
     } = {},
   ): void {
     if (state.done) return;
@@ -963,9 +964,13 @@ export class CaptureRuntime {
       tool_calls: fullTools ? persistedTools : toolNames(state.request),
       tool_names: observedToolNames?.length ? observedToolNames : undefined,
       endpoint: state.endpoint,
+      http_request_id: extra.httpRequestId ?? get(extra.error, "request_id"),
+      usage_complete: extra.stream === true
+        ? extra.error === undefined && extra.status !== "error" && extra.status !== "abandoned"
+        : undefined,
       request_id: get(response, "_request_id") ?? get(response, "response_id")
         ?? get(response, "responseId") ?? get(response, "id")
-        ?? get(get(response, "response"), "id"),
+        ?? get(get(response, "response"), "id") ?? get(extra.error, "request_id"),
       batch: state.request.batch === true,
       batch_custom_id: state.request.batch_custom_id,
       // Explicit false is the sensitive-operation opt-out; hosted ingestion

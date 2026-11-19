@@ -271,6 +271,7 @@ function streamProxy(
   let ttftMs: number | undefined;
   const parts: string[] = [];
   const chunks: unknown[] = [];
+  let helperSnapshot: unknown;
   const hasOutput = (chunk: unknown) => {
     if (chunkText(chunk)) return true;
     const value = chunk as AnyRecord;
@@ -306,7 +307,15 @@ function streamProxy(
     return chunk;
   };
   const finish = (response: unknown = last, error?: unknown, status?: string) => {
+    let httpRequestId: string | undefined;
+    if (state.provider === "anthropic") {
+      try {
+        if (error || status === "abandoned") response = stream.currentMessage ?? helperSnapshot ?? response;
+        if (typeof stream.request_id === "string") httpRequestId = stream.request_id;
+      } catch { /* Native stream getters must not affect request behavior. */ }
+    }
     finishCapture(capture, state, response, {
+      httpRequestId,
       error,
       status,
       stream: true,
@@ -317,6 +326,13 @@ function streamProxy(
   };
 
   if (typeof stream.on === "function") {
+    if (state.provider === "anthropic") {
+      stream.on("streamEvent", (_event: unknown, snapshot: unknown) => {
+        // Helpers consume the stream internally and may clear their snapshot
+        // before finalMessage() rejects. Keep its latest native usage evidence.
+        if (snapshot != null) helperSnapshot = snapshot;
+      });
+    }
     stream.on("error", (error: unknown) => finish(last, error));
   }
 
