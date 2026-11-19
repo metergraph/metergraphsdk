@@ -91,3 +91,14 @@ def test_batch_capture_does_not_invent_requested_tier(tmp_path, monkeypatch, pro
     assert len(rows.rows) == 1
     assert rows.rows[0]["service_tier"] == "batch"
     assert rows.rows[0]["requested_service_tier"] is None
+
+
+@pytest.mark.parametrize('usage', [
+    {'promptTokenCount': 100, 'toolUsePromptTokenCount': 7, 'candidatesTokenCount': 10, 'thoughtsTokenCount': 5},
+    {'prompt_token_count': 100, 'tool_use_prompt_token_count': 7, 'candidates_token_count': 10, 'thoughts_token_count': 5},
+])
+def test_google_billable_token_totals_include_tool_context_and_thinking(tmp_path, usage):
+    row = finish_row(tmp_path, 'google', 'models.generate_content', {}, {'usageMetadata': usage})
+    assert row['input_tokens'] == 107
+    assert row['output_tokens'] == 15
+    assert row['reasoning_tokens'] == 5

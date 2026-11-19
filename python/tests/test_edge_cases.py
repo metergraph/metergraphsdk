@@ -44,7 +44,7 @@ def test_usage_normalization_accepts_provider_variants_and_rejects_bad_counts():
     )
     assert normalized == {
         "input_tokens": 12,
-        "output_tokens": 5,
+        "output_tokens": 7,
         "cache_read_tokens": 3,
         "cache_write_tokens": None,
         "cache_write_5m_tokens": None,

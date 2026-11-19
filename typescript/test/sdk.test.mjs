@@ -489,7 +489,7 @@ test("wrap captures gemini usage from non-stream and cumulative stream responses
   assert.equal(row.endpoint, "models.generate_content");
   assert.equal(row.model, "gemini-test");
   assert.equal(row.input_tokens, 100);
-  assert.equal(row.output_tokens, 20);
+  assert.equal(row.output_tokens, 25);
   assert.equal(row.cache_read_tokens, 10);
   assert.equal(row.reasoning_tokens, 5);
   assert.equal(capturedResponse(row).content, "gemini done");
@@ -506,7 +506,7 @@ test("wrap captures gemini usage from non-stream and cumulative stream responses
   assert.equal(streamed.stream, true);
   assert.notEqual(streamed.ttft_ms, undefined);
   assert.equal(streamed.input_tokens, 100);
-  assert.equal(streamed.output_tokens, 20);
+  assert.equal(streamed.output_tokens, 25);
   assert.equal(streamed.cache_read_tokens, 10);
   assert.equal(capturedResponse(streamed).content, "partial");
 });

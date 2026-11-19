@@ -159,7 +159,7 @@ def _usage(response: Any) -> dict[str, int | None]:
     cache_creation = _get(usage, "cache_creation") or _get(
         usage, "cacheCreation"
     )
-    return {
+    counts = {
         "input_tokens": _int(
             _get(
                 usage,
@@ -246,6 +246,15 @@ def _usage(response: Any) -> dict[str, int | None]:
             )
         ),
     }
+
+    # Native Gemini separates billable tool context and thinking from prompt/candidates.
+    prompt = _int(_get(usage, "prompt_token_count", _get(usage, "promptTokenCount")))
+    candidates = _int(_get(usage, "candidates_token_count", _get(usage, "candidatesTokenCount")))
+    if prompt is not None:
+        counts["input_tokens"] = prompt + (_int(_get(usage, "tool_use_prompt_token_count", _get(usage, "toolUsePromptTokenCount"))) or 0)
+    if candidates is not None:
+        counts["output_tokens"] = candidates + (counts["reasoning_tokens"] or 0)
+    return counts
 
 
 def _response_text(response: Any) -> str | None:
