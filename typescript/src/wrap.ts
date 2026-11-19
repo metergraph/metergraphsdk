@@ -779,7 +779,7 @@ function resolveSeam(client: AnyRecord, path: string): AnyRecord | undefined {
 
 function applySeams(client: AnyRecord, provider: string, gatewayName?: string): string[] {
   const patched: string[] = [];
-  for (const seam of SEAM_TABLES[provider === "perplexity" ? "openai" : provider] ?? []) {
+  for (const seam of SEAM_TABLES[provider] ?? SEAM_TABLES.openai ?? []) {
     let owner: AnyRecord | undefined;
     try {
       owner = resolveSeam(client, seam.path);
@@ -805,7 +805,8 @@ function applyBatchExtras(client: AnyRecord, provider: string): number {
   return patched;
 }
 
-export type ProviderName = "openai" | "anthropic" | "google" | "perplexity";
+// Other explicit names use the OpenAI-compatible wire contract.
+export type ProviderName = "openai" | "anthropic" | "google" | "perplexity" | (string & {});
 
 // A gateway override requires the OpenAI-compatible contract, so at the type
 // level `gateway` is allowed only when `provider` is absent or "openai".

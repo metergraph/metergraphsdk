@@ -695,3 +695,24 @@ def test_helper_failure_is_recorded_even_when_caller_catches_it_inside_context(i
             assert len(rows.rows) == 1
     assert rows.rows[0]['error'] is True
     assert rows.rows[0]['usage_complete'] is False
+
+
+def test_explicit_openai_compatible_provider_retains_identity_and_result():
+    capture, rows = runtime()
+    response = {'id': 'example-id', 'model': 'example-model', 'usage': {'prompt_tokens': 100, 'completion_tokens': 20}}
+    received = []
+    def create(request=None, **kwargs):
+        received.append(kwargs)
+        return response
+    client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    _capture.set_runtime(capture)
+    try:
+        assert _capture.wrap(client, provider='example-provider') is client
+        assert client.chat.completions.create(model='example-model') is response
+        assert received == [{'model': 'example-model'}]
+        assert len(rows.rows) == 1
+        assert rows.rows[0]['provider'] == 'example-provider'
+        assert rows.rows[0]['input_tokens'] == 100
+        assert rows.rows[0]['output_tokens'] == 20
+    finally:
+        _capture.set_runtime(None)
