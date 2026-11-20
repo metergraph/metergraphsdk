@@ -120,3 +120,52 @@ def test_perplexity_openai_compatible_client_keeps_provider_identity():
         assert rows.rows[0]["web_search_calls"] == 1
     finally:
         set_runtime(None)
+
+
+def test_perplexity_resolves_bare_search_default_without_guessing_managed_configs():
+    response = {"output": [{"type": "search_results"}]}
+
+    def record(request):
+        return provider_record("perplexity", response, request=request)
+
+    assert record({"tools": [{"type": "web_search"}]})["search_type"] == "web"
+    assert record({"tools": [{"type": "web_search"}], "reasoning": {"effort": "high"}})["search_type"] == "web"
+    for extra in [{"effort": "low"}, {"profile": "example-profile"},
+                  {"extra_body": {"effort": "low"}}, {"extra_body": {"profile": "example-profile"}}]:
+        assert record({"tools": [{"type": "web_search"}], **extra}).get("search_type") is None
+        assert record({"tools": [{"type": "web_search", "search_type": "fast"}], **extra})["search_type"] == "fast"
+    for tools in [None, [], [{"type": "web_search", "search_type": None}],
+                  [{"type": "web_search", "search_type": "unknown"}],
+                  [{"type": "web_search"}, {"type": "web_search", "search_type": "fast"}]]:
+        assert record({"tools": tools}).get("search_type") is None
+
+
+def test_perplexity_search_tools_inside_extra_body():
+    response = {"output": [{"type": "search_results"}]}
+    for kind in ("web", "fast"):
+        row = provider_record("perplexity", response, request={
+            "tools": [{"type": "web_search"}],
+            "extra_body": {"tools": [{"type": "web_search", "search_type": kind}]},
+        })
+        assert row["search_type"] == kind
+    assert provider_record("perplexity", response, request={
+        "extra_body": {"tools": [{"type": "web_search"}]},
+    })["search_type"] == "web"
+
+
+def test_perplexity_default_does_not_change_other_provider_usage():
+    from metergraph._retrieval import retrieval_usage
+    request = {"tools": [{"type": "web_search"}]}
+    response = {
+        "output": [{"type": "web_search_call"}, {"type": "search_results"}],
+        "usage": {"server_tool_use": {"web_search_requests": 2}},
+        "candidates": [{"groundingMetadata": {"webSearchQueries": ["synthetic"]}}],
+    }
+    for provider, expected in [
+        ("openai", {"web_search_calls": 1}),
+        ("anthropic", {"server_tool_use": {"web_search_requests": 2}}),
+        ("google", {"grounding_queries": 1, "grounded_prompt": 1}),
+        ("deepseek", {}),
+    ]:
+        assert retrieval_usage(provider, "responses.create", request, response) == expected
+    assert retrieval_usage("perplexity", "chat.completions.create", request, response) == {"retrieval_api": "sonar"}

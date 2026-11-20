@@ -93,3 +93,46 @@ test('Perplexity OpenAI-compatible client keeps provider identity',async(t)=>{
   await client.responses.create({model:'perplexity/sonar',input:'Synthetic',tools:[{type:'web_search',search_type:'web'}]});
   assert.equal(rows.length,1);assert.equal(rows[0].provider,'perplexity');assert.equal(rows[0].web_search_calls,1);
 });
+
+test('Perplexity resolves the bare web-search default without guessing managed configurations',()=>{
+  const response={output:[{type:'search_results'}]};
+  const record=request=>providerRecord('perplexity',response,[],request);
+  assert.equal(record({tools:[{type:'web_search'}]}).search_type,'web');
+  assert.equal(record({tools:[{type:'web_search'}],reasoning:{effort:'high'}}).search_type,'web');
+  for (const extra of [{effort:'low'},{profile:'example-profile'}]) {
+    assert.equal(record({tools:[{type:'web_search'}],...extra}).search_type,undefined);
+    assert.equal(record({tools:[{type:'web_search',search_type:'fast'}],...extra}).search_type,'fast');
+  }
+  for (const tools of [undefined,[],[{type:'web_search',search_type:null}],[{type:'web_search',search_type:'unknown'}],[{type:'web_search'},{type:'web_search',search_type:'fast'}]]) {
+    assert.equal(record({tools}).search_type,undefined);
+  }
+});
+
+test('Perplexity default does not change other provider usage',async()=>{
+  const {retrievalUsage}=await import('../dist/retrieval.js');
+  const request={tools:[{type:'web_search'}]};
+  const response={output:[{type:'web_search_call'},{type:'search_results'}],
+    usage:{server_tool_use:{web_search_requests:2}},
+    candidates:[{groundingMetadata:{webSearchQueries:['synthetic']}}]};
+  for(const [provider,expected] of [
+    ['openai',{web_search_calls:1}],
+    ['anthropic',{server_tool_use:{web_search_requests:2}}],
+    ['google',{grounding_queries:1,grounded_prompt:1}],
+    ['deepseek',{}],
+  ]) assert.deepEqual(retrievalUsage(provider,'responses.create',request,response),expected);
+  assert.deepEqual(retrievalUsage('perplexity','chat.completions.create',request,response),{retrieval_api:'sonar'});
+});
+
+test('Perplexity reads effective search tools and managed settings from extra_body',()=>{
+  const response={output:[{type:'search_results'}]};
+  const record=request=>providerRecord('perplexity',response,[],request);
+  for (const search_type of ['web','fast']) {
+    assert.equal(record({tools:[{type:'web_search'}],
+      extra_body:{tools:[{type:'web_search',search_type}]}}).search_type,search_type);
+  }
+  assert.equal(record({extra_body:{tools:[{type:'web_search'}]}}).search_type,'web');
+  for (const extra_body of [{effort:'low'},{profile:'example-profile'}]) {
+    assert.equal(record({tools:[{type:'web_search'}],extra_body}).search_type,undefined);
+    assert.equal(record({tools:[{type:'web_search',search_type:'fast'}],extra_body}).search_type,'fast');
+  }
+});
