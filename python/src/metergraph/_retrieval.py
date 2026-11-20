@@ -72,11 +72,11 @@ def retrieval_usage(provider: str, endpoint: str, request: dict, response: Any, 
             searches = value
     if searches is None and items is not None:
         searches = sum(get(item, "type") == "search_results" for item in items)
+    extra = request.get("extra_body")
+    request = {**request, **extra} if isinstance(extra, Mapping) else request
     tools = request.get("tools")
     # Bare tools default to web. Managed effort/profile configurations can override that default.
-    extra = request.get("extra_body")
-    managed = any(key in request or isinstance(extra, Mapping) and key in extra for key in ("effort", "profile"))
-    default_type = None if managed else "web"
+    default_type = "web" if "effort" not in request and "profile" not in request else None
     types = [get(tool, "search_type", default_type) for tool in tools if get(tool, "type") == "web_search"] if isinstance(tools, list) else []
     search_type = types[0] if types and all(value == types[0] for value in types) and types[0] in {"web", "fast"} else None
     return {"retrieval_api": "agent", **({"web_search_calls": searches} if searches is not None else {}), **({"search_type": search_type} if search_type else {})}

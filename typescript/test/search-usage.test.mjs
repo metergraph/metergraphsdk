@@ -107,3 +107,18 @@ test('Perplexity resolves the bare web-search default without guessing managed c
     assert.equal(record({tools}).search_type,undefined);
   }
 });
+
+test('Perplexity default does not change other provider usage',async()=>{
+  const {retrievalUsage}=await import('../dist/retrieval.js');
+  const request={tools:[{type:'web_search'}]};
+  const response={output:[{type:'web_search_call'},{type:'search_results'}],
+    usage:{server_tool_use:{web_search_requests:2}},
+    candidates:[{groundingMetadata:{webSearchQueries:['synthetic']}}]};
+  for(const [provider,expected] of [
+    ['openai',{web_search_calls:1}],
+    ['anthropic',{server_tool_use:{web_search_requests:2}}],
+    ['google',{grounding_queries:1,grounded_prompt:1}],
+    ['deepseek',{}],
+  ]) assert.deepEqual(retrievalUsage(provider,'responses.create',request,response),expected);
+  assert.deepEqual(retrievalUsage('perplexity','chat.completions.create',request,response),{retrieval_api:'sonar'});
+});
