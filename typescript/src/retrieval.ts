@@ -64,6 +64,8 @@ export function retrievalUsage(provider: string, endpoint: string, request: Reco
     searches = count(usage) ?? searches;
   }
   searches ??= items?.filter(item => get(item, 'type') === 'search_results').length;
+  const extra = request.extra_body;
+  if (extra && typeof extra === 'object' && !Array.isArray(extra)) request = {...request, ...extra};
   const tools = Array.isArray(request.tools) ? request.tools : [];
   // Bare tools default to web. Managed effort/profile configurations can override that default.
   const defaultType = !('effort' in request) && !('profile' in request) ? 'web' : undefined;

@@ -122,3 +122,17 @@ test('Perplexity default does not change other provider usage',async()=>{
   ]) assert.deepEqual(retrievalUsage(provider,'responses.create',request,response),expected);
   assert.deepEqual(retrievalUsage('perplexity','chat.completions.create',request,response),{retrieval_api:'sonar'});
 });
+
+test('Perplexity reads effective search tools and managed settings from extra_body',()=>{
+  const response={output:[{type:'search_results'}]};
+  const record=request=>providerRecord('perplexity',response,[],request);
+  for (const search_type of ['web','fast']) {
+    assert.equal(record({tools:[{type:'web_search'}],
+      extra_body:{tools:[{type:'web_search',search_type}]}}).search_type,search_type);
+  }
+  assert.equal(record({extra_body:{tools:[{type:'web_search'}]}}).search_type,'web');
+  for (const extra_body of [{effort:'low'},{profile:'example-profile'}]) {
+    assert.equal(record({tools:[{type:'web_search'}],extra_body}).search_type,undefined);
+    assert.equal(record({tools:[{type:'web_search',search_type:'fast'}],extra_body}).search_type,'fast');
+  }
+});
