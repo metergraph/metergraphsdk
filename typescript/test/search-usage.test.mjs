@@ -93,3 +93,17 @@ test('Perplexity OpenAI-compatible client keeps provider identity',async(t)=>{
   await client.responses.create({model:'perplexity/sonar',input:'Synthetic',tools:[{type:'web_search',search_type:'web'}]});
   assert.equal(rows.length,1);assert.equal(rows[0].provider,'perplexity');assert.equal(rows[0].web_search_calls,1);
 });
+
+test('Perplexity resolves the bare web-search default without guessing managed configurations',()=>{
+  const response={output:[{type:'search_results'}]};
+  const record=request=>providerRecord('perplexity',response,[],request);
+  assert.equal(record({tools:[{type:'web_search'}]}).search_type,'web');
+  assert.equal(record({tools:[{type:'web_search'}],reasoning:{effort:'high'}}).search_type,'web');
+  for (const extra of [{effort:'low'},{profile:'example-profile'}]) {
+    assert.equal(record({tools:[{type:'web_search'}],...extra}).search_type,undefined);
+    assert.equal(record({tools:[{type:'web_search',search_type:'fast'}],...extra}).search_type,'fast');
+  }
+  for (const tools of [undefined,[],[{type:'web_search',search_type:null}],[{type:'web_search',search_type:'unknown'}],[{type:'web_search'},{type:'web_search',search_type:'fast'}]]) {
+    assert.equal(record({tools}).search_type,undefined);
+  }
+});

@@ -65,7 +65,10 @@ export function retrievalUsage(provider: string, endpoint: string, request: Reco
   }
   searches ??= items?.filter(item => get(item, 'type') === 'search_results').length;
   const tools = Array.isArray(request.tools) ? request.tools : [];
-  const types = tools.filter(tool => get(tool, 'type') === 'web_search').map(tool => get(tool, 'search_type'));
+  // Bare tools default to web. Managed effort/profile configurations can override that default.
+  const defaultType = !('effort' in request) && !('profile' in request) ? 'web' : undefined;
+  const types = tools.filter(tool => get(tool, 'type') === 'web_search')
+    .map(tool => get(tool, 'search_type') === undefined ? defaultType : get(tool, 'search_type'));
   const searchType = types.length && types.every(type => type === types[0]) && ['web', 'fast'].includes(types[0]) ? types[0] : undefined;
   return {retrieval_api: 'agent', ...(searches !== undefined ? {web_search_calls: searches} : {}), ...(searchType ? {search_type: searchType} : {})};
 }

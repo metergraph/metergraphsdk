@@ -120,3 +120,20 @@ def test_perplexity_openai_compatible_client_keeps_provider_identity():
         assert rows.rows[0]["web_search_calls"] == 1
     finally:
         set_runtime(None)
+
+
+def test_perplexity_resolves_bare_search_default_without_guessing_managed_configs():
+    response = {"output": [{"type": "search_results"}]}
+
+    def record(request):
+        return provider_record("perplexity", response, request=request)
+
+    assert record({"tools": [{"type": "web_search"}]})["search_type"] == "web"
+    assert record({"tools": [{"type": "web_search"}], "reasoning": {"effort": "high"}})["search_type"] == "web"
+    for extra in [{"effort": "low"}, {"profile": "example-profile"}]:
+        assert record({"tools": [{"type": "web_search"}], **extra}).get("search_type") is None
+        assert record({"tools": [{"type": "web_search", "search_type": "fast"}], **extra})["search_type"] == "fast"
+    for tools in [None, [], [{"type": "web_search", "search_type": None}],
+                  [{"type": "web_search", "search_type": "unknown"}],
+                  [{"type": "web_search"}, {"type": "web_search", "search_type": "fast"}]]:
+        assert record({"tools": tools}).get("search_type") is None
