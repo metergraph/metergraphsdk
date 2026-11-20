@@ -130,7 +130,8 @@ def test_perplexity_resolves_bare_search_default_without_guessing_managed_config
 
     assert record({"tools": [{"type": "web_search"}]})["search_type"] == "web"
     assert record({"tools": [{"type": "web_search"}], "reasoning": {"effort": "high"}})["search_type"] == "web"
-    for extra in [{"effort": "low"}, {"profile": "example-profile"}]:
+    for extra in [{"effort": "low"}, {"profile": "example-profile"},
+                  {"extra_body": {"effort": "low"}}, {"extra_body": {"profile": "example-profile"}}]:
         assert record({"tools": [{"type": "web_search"}], **extra}).get("search_type") is None
         assert record({"tools": [{"type": "web_search", "search_type": "fast"}], **extra})["search_type"] == "fast"
     for tools in [None, [], [{"type": "web_search", "search_type": None}],
