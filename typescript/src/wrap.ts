@@ -854,8 +854,6 @@ export function wrap<T extends AnyRecord>(client: T, providerOrOptions?: Provide
     const label = gatewayName ? `${gatewayName} gateway via ${name}` : name;
     if (!patchedCount) {
       console.warn(`Metergraph found no supported methods on ${label} client`);
-    } else {
-      console.info(`Metergraph patched ${patchedCount} seam(s) on ${label} client: ${patched.join(", ") || "(batch-only)"}`);
     }
   } catch (error) {
     console.warn("Metergraph wrap() failed; client is unmodified and uninstrumented", error);

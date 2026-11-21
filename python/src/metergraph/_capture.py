@@ -2282,7 +2282,7 @@ def wrap(
                 "Metergraph found no supported methods on %s client", client_label
             )
         else:
-            log.info(
+            log.debug(
                 "Metergraph patched %d seam(s) on %s client: %s",
                 patched_count,
                 client_label,
