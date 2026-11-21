@@ -326,6 +326,29 @@ def test_wrap_skips_missing_nested_attribute_without_raising():
     assert result is client
 
 
+def test_wrap_success_is_quiet_at_info_and_still_captures(caplog):
+    rows = Rows()
+    _capture.set_runtime(Runtime(rows, Options(app_root=str(Path(__file__).parents[1]))))
+    try:
+        with caplog.at_level(logging.INFO, logger="metergraph"):
+            for _ in range(3):
+                result = response()
+                client = SimpleNamespace(responses=SimpleNamespace(create=lambda **kwargs: result))
+                assert metergraph.wrap(client, provider="openai") is client
+                assert client.responses.create(model="example-model") is result
+        assert len(rows.rows) == 3
+        assert not any("Metergraph patched" in r.getMessage() for r in caplog.records)
+    finally:
+        _capture.set_runtime(None)
+
+
+def test_wrap_unsupported_client_still_warns(caplog):
+    with caplog.at_level(logging.WARNING, logger="metergraph"):
+        client = SimpleNamespace()
+        assert metergraph.wrap(client, provider="openai") is client
+    assert any("no supported methods" in r.getMessage() for r in caplog.records)
+
+
 def test_wrap_skips_one_broken_seam_without_affecting_others(tmp_path):
     rows = Rows()
     _capture.set_runtime(
