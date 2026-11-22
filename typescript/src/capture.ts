@@ -871,8 +871,9 @@ export class CaptureRuntime {
       response,
       extra.responseChunks,
     );
+    const reason = stopReason(response);
     const status = extra.status ?? (
-      extra.error ? "error" : stopReason(response) ?? "success"
+      extra.error ? "error" : (reason?.trim() ? reason : "success")
     );
     const { finishReason, finishReasonRaw } = finishReasonDetails(response);
     const statusCode = extra.error || extra.status === "error" || finishReason === "error"
