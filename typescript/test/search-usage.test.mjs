@@ -99,8 +99,10 @@ test('Perplexity resolves the bare web-search default without guessing managed c
   const record=request=>providerRecord('perplexity',response,[],request);
   assert.equal(record({tools:[{type:'web_search'}]}).search_type,'web');
   assert.equal(record({tools:[{type:'web_search'}],reasoning:{effort:'high'}}).search_type,'web');
-  for (const extra of [{effort:'low'},{profile:'example-profile'}]) {
+  for (const extra of [{effort:'ultra'},{effort:'low@2026-10-16.0'},{effort:'unknown'},{profile:'example-profile'}]) {
+    assert.equal(record(extra).search_type,undefined);
     assert.equal(record({tools:[{type:'web_search'}],...extra}).search_type,undefined);
+    assert.equal(record({tools:[{type:'web_search',search_type:'web'}],...extra}).search_type,'web');
     assert.equal(record({tools:[{type:'web_search',search_type:'fast'}],...extra}).search_type,'fast');
   }
   for (const tools of [undefined,[],[{type:'web_search',search_type:null}],[{type:'web_search',search_type:'unknown'}],[{type:'web_search'},{type:'web_search',search_type:'fast'}]]) {
@@ -131,8 +133,23 @@ test('Perplexity reads effective search tools and managed settings from extra_bo
       extra_body:{tools:[{type:'web_search',search_type}]}}).search_type,search_type);
   }
   assert.equal(record({extra_body:{tools:[{type:'web_search'}]}}).search_type,'web');
-  for (const extra_body of [{effort:'low'},{profile:'example-profile'}]) {
+  for (const extra_body of [{effort:'ultra'},{effort:'low@2026-10-16.0'},{effort:'unknown'},{profile:'example-profile'}]) {
     assert.equal(record({tools:[{type:'web_search'}],extra_body}).search_type,undefined);
     assert.equal(record({tools:[{type:'web_search',search_type:'fast'}],extra_body}).search_type,'fast');
   }
+});
+
+test('Perplexity active effort levels supply fast search defaults',()=>{
+  const record=request=>providerRecord('perplexity',{output:[{type:'search_results'}]},[],request);
+  for (const level of ['fast','low','medium','high','xhigh']) for (const suffix of ['', '@latest']) {
+    const effort=level+suffix;
+    for (const settings of [{effort},{extra_body:{effort}}]) {
+      assert.equal(record(settings).search_type,'fast');
+      assert.equal(record({...settings,tools:[{type:'web_search'}]}).search_type,'fast');
+      for (const search_type of ['web','fast']) assert.equal(record({...settings,tools:[{type:'web_search',search_type}]}).search_type,search_type);
+      for (const tools of [[],[{type:'fetch_url'}]]) assert.equal(record({...settings,tools}).search_type,undefined);
+    }
+  }
+  assert.equal(record({effort:'low',extra_body:{effort:'ultra'}}).search_type,undefined);
+  assert.equal(record({extra_body:{effort:'low',tools:[{type:'web_search'}]}}).search_type,'fast');
 });

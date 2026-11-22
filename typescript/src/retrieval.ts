@@ -67,9 +67,10 @@ export function retrievalUsage(provider: string, endpoint: string, request: Reco
   const extra = request.extra_body;
   if (extra && typeof extra === 'object' && !Array.isArray(extra)) request = {...request, ...extra};
   const tools = Array.isArray(request.tools) ? request.tools : [];
-  // Bare tools default to web. Managed effort/profile configurations can override that default.
-  const defaultType = !('effort' in request) && !('profile' in request) ? 'web' : undefined;
-  const types = tools.filter(tool => get(tool, 'type') === 'web_search')
+  // Active effort bundles use fast search; pinned versions and profiles are not inferred.
+  const activeFast = typeof request.effort === 'string' && ['fast','low','medium','high','xhigh'].some(level => request.effort === level || request.effort === `${level}@latest`);
+  const defaultType = 'profile' in request ? undefined : activeFast ? 'fast' : !('effort' in request) ? 'web' : undefined;
+  const types = request.tools === undefined && defaultType === 'fast' ? ['fast'] : tools.filter(tool => get(tool, 'type') === 'web_search')
     .map(tool => get(tool, 'search_type') === undefined ? defaultType : get(tool, 'search_type'));
   const searchType = types.length && types.every(type => type === types[0]) && ['web', 'fast'].includes(types[0]) ? types[0] : undefined;
   return {retrieval_api: 'agent', ...(searches !== undefined ? {web_search_calls: searches} : {}), ...(searchType ? {search_type: searchType} : {})};
