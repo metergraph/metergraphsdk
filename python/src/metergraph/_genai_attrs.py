@@ -186,6 +186,72 @@ def _is_provider_usage(decoded: Mapping[str, Any]) -> bool:
     )
 
 
+# Native spellings of each bucket in a provider's own usage object, and the
+# alias the capture layer reads for a Langfuse bucket that sits beside them.
+_PROVIDER_BUCKETS = (
+    (
+        _LANGFUSE_INPUT_KEYS,
+        ("prompt_tokens", "prompt_token_count", "promptTokenCount"),
+        "input_tokens",
+    ),
+    (
+        _LANGFUSE_OUTPUT_KEYS,
+        ("completion_tokens", "candidates_token_count", "candidatesTokenCount"),
+        "output_tokens",
+    ),
+    (
+        _LANGFUSE_CACHE_READ_KEYS,
+        (
+            "prompt_tokens_details",
+            "cached_content_token_count",
+            "cachedContentTokenCount",
+        ),
+        "cache_read_input_tokens",
+    ),
+    (
+        _LANGFUSE_CACHE_WRITE_KEYS,
+        ("cacheCreationInputTokens",),
+        "cache_creation_input_tokens",
+    ),
+    (
+        _LANGFUSE_REASONING_KEYS,
+        ("completion_tokens_details", "thoughts_token_count", "thoughtsTokenCount"),
+        "reasoning_tokens",
+    ),
+)
+
+
+def _provider_usage_with_langfuse_buckets(
+    decoded: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Pass a provider usage object through, keeping Langfuse buckets beside it.
+
+    A mixed object such as ``{"input": 100, "output": 20,
+    "cached_content_token_count": 30}`` would otherwise lose ``input`` and
+    ``output``, which the capture layer does not read. Each Langfuse bucket is
+    renamed to the capture alias, unless the provider's own count for that
+    bucket is present, which wins.
+    """
+    usage = {
+        key: value
+        for key, value in decoded.items()
+        if key not in _LANGFUSE_USAGE_IGNORED
+    }
+    for langfuse_keys, native_keys, alias in _PROVIDER_BUCKETS:
+        present = [key for key in langfuse_keys if key in usage and key != alias]
+        if not present:
+            continue
+        native = alias in usage or any(key in usage for key in native_keys)
+        values = [usage.pop(key) for key in present]
+        if not native:
+            count = next(
+                (c for c in map(_count, values) if c is not None), None
+            )
+            if count is not None:
+                usage[alias] = count
+    return usage
+
+
 def map_usage_details(
     decoded: Mapping[str, Any], provider: str | None = None
 ) -> tuple[dict[str, Any], tuple[str, ...]]:
@@ -199,11 +265,7 @@ def map_usage_details(
     whose native input does. The derived ``"total"`` is skipped silently.
     """
     if _is_provider_usage(decoded):
-        return {
-            key: value
-            for key, value in decoded.items()
-            if key not in _LANGFUSE_USAGE_IGNORED
-        }, ()
+        return _provider_usage_with_langfuse_buckets(decoded), ()
     used: set[str] = set()
     input_tokens = _first_count(decoded, _LANGFUSE_INPUT_KEYS, used)
     output_tokens = _first_count(decoded, _LANGFUSE_OUTPUT_KEYS, used)

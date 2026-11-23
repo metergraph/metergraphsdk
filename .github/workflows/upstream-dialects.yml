@@ -25,6 +25,10 @@ on:
     - cron: "0 7 * * *"
   workflow_dispatch:
 
+# Read-only: the jobs check out code and run tests, nothing more.
+permissions:
+  contents: read
+
 jobs:
   pinned:
     name: pinned (langfuse ${{ matrix.langfuse }})

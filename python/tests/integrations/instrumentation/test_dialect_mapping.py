@@ -923,3 +923,38 @@ def test_native_gemini_usage_passes_through():
     assert counts["output_tokens"] == 30
     assert counts["cache_read_tokens"] == 60
     assert mapped.dropped_usage_keys == ()
+
+
+@pytest.mark.parametrize(
+    ("usage", "expected"),
+    [
+        # Langfuse buckets beside a provider-only counter keep their totals.
+        (
+            {"input": 100, "output": 20, "cached_content_token_count": 30},
+            {"input_tokens": 100, "output_tokens": 20, "cache_read_tokens": 30},
+        ),
+        (
+            {"input": 100, "output": 20, "prompt_tokens_details": {"cached_tokens": 40}},
+            {"input_tokens": 100, "output_tokens": 20, "cache_read_tokens": 40},
+        ),
+        # The provider's own count wins over a Langfuse bucket for the same total.
+        (
+            {"prompt_tokens": 90, "completion_tokens": 10, "input": 70, "output": 8},
+            {"input_tokens": 90, "output_tokens": 10},
+        ),
+    ],
+)
+def test_langfuse_buckets_survive_beside_provider_usage(usage, expected):
+    mapped = map_span_attributes(
+        _langfuse(
+            **{
+                "langfuse.observation.model.name": "gemini-2.5-flash",
+                "langfuse.observation.usage_details": json.dumps(usage),
+            }
+        )
+    )
+    counts = _usage(mapped.response)
+    for key, value in expected.items():
+        assert counts[key] == value, key
+    assert "input" not in mapped.response["usage"]
+    assert "output" not in mapped.response["usage"]
