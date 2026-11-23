@@ -842,3 +842,32 @@ def test_reliability_uses_standard_span_facts(monkeypatch):
         assert "otel" not in rows.rows[3]
     finally:
         _capture.set_runtime(None)
+
+
+def test_langfuse_release_and_environment_fall_back_to_the_resource(monkeypatch):
+    """Langfuse Python v3 records both on its Resource, not on each span."""
+    rows = Rows()
+    _capture.set_runtime(Runtime(rows, Options(app_root="", environment="from-init")))
+    monkeypatch.setattr(metergraph, "init", lambda: None)
+    span = _span(_langfuse_attributes())
+    span._resource = Resource.create(
+        {"langfuse.release": "r-resource", "langfuse.environment": "staging"}
+    )
+
+    MetergraphGenAIExporter().export([span])
+
+    row = rows.rows[0]
+    assert row["tags"]["langfuse.release"] == "r-resource"
+    assert row["environment"] == "staging"
+    _capture.set_runtime(None)
+
+
+def test_init_environment_applies_when_the_span_has_none(monkeypatch):
+    rows = Rows()
+    _capture.set_runtime(Runtime(rows, Options(app_root="", environment="from-init")))
+    monkeypatch.setattr(metergraph, "init", lambda: None)
+
+    MetergraphGenAIExporter().export([_span(_langfuse_attributes())])
+
+    assert rows.rows[0]["environment"] == "from-init"
+    _capture.set_runtime(None)

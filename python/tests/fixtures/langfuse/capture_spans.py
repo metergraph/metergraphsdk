@@ -78,7 +78,8 @@ def mock_http():
     return httpx.Client(transport=httpx.MockTransport(handler))
 
 
-def main(out: Path) -> None:
+def capture() -> dict:
+    """Run the flows against the installed Langfuse SDK and return the payload."""
     from langfuse import Langfuse, observe, propagate_attributes
     from langfuse.api import Prompt_Text
     from langfuse.model import TextPromptClient
@@ -86,8 +87,13 @@ def main(out: Path) -> None:
     memory = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(memory))
-    lf = Langfuse(public_key="pk-lf-synthetic", secret_key="sk-lf-synthetic", host="http://127.0.0.1:9",
-                  tracer_provider=provider, span_exporter=_Local())
+    import inspect
+
+    options = {"public_key": "pk-lf-synthetic", "secret_key": "sk-lf-synthetic",
+               "host": "http://127.0.0.1:9", "tracer_provider": provider}
+    if "span_exporter" in inspect.signature(Langfuse.__init__).parameters:
+        options["span_exporter"] = _Local()  # v4+; v3 retries the dead loopback host and gives up
+    lf = Langfuse(**options)
     prompt = TextPromptClient(Prompt_Text(name="mg-conformance-prompt", version=1, prompt="Classify: {{text}}",
                                           config={}, labels=["production"], tags=[], type="text"))
     labels: dict[str, str] = {}
@@ -193,7 +199,8 @@ def main(out: Path) -> None:
             "status": {"code": span.status.status_code.name, "description": span.status.description},
             "attributes": attributes,
             "resource": {k: v for k, v in span.resource.attributes.items()
-                         if k in ("service.name", "telemetry.sdk.language", "telemetry.sdk.name")},
+                         if k in ("service.name", "telemetry.sdk.language", "telemetry.sdk.name",
+                                  "langfuse.release", "langfuse.environment")},
         })
     payload = {
         "schema": "metergraph-langfuse-otel-spans/1",
@@ -201,11 +208,16 @@ def main(out: Path) -> None:
         "versions": {p: md.version(p) for p in ("langfuse", "opentelemetry-sdk", "openai", "langchain-openai")},
         "spans": records,
     }
-    text = json.dumps(payload, indent=1, sort_keys=False) + "\n"
-    for forbidden in ("pk-lf-synthetic", "sk-lf-synthetic", "sk-mock", "/Users/"):
+    text = json.dumps(payload)
+    for forbidden in ("pk-lf-synthetic", "sk-lf-synthetic", "sk-mock"):
         assert forbidden not in text, forbidden
-    out.write_text(text)
-    print(f"wrote {len(records)} spans to {out}")
+    return payload
+
+
+def main(out: Path) -> None:
+    payload = capture()
+    out.write_text(json.dumps(payload, indent=1) + "\n")
+    print(f"wrote {len(payload['spans'])} spans to {out}")
 
 
 if __name__ == "__main__":

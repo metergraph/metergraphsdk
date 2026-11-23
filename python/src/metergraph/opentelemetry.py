@@ -27,6 +27,13 @@ from ._genai_attrs import (
 )
 
 _SKIP_SCOPE = "scope"
+# Resource attributes a span inherits when it does not set them itself.
+_RESOURCE_FALLBACK_KEYS = (
+    "langfuse.release",
+    "langfuse.environment",
+    "deployment.environment.name",
+    "deployment.environment",
+)
 
 
 class OpenTelemetrySpanError(Exception):
@@ -102,6 +109,18 @@ class MetergraphGenAIExporter(SpanExporter):
             return
 
         attributes = span.attributes or {}
+        resource_attributes = (
+            span.resource.attributes if span.resource is not None else {}
+        )
+        # Langfuse Python v3 records release and environment on the Resource
+        # rather than each span; Langfuse's own server reads them from either.
+        inherited = {
+            key: resource_attributes[key]
+            for key in _RESOURCE_FALLBACK_KEYS
+            if key in resource_attributes and key not in attributes
+        }
+        if inherited:
+            attributes = {**attributes, **inherited}
         mapped = map_span_attributes(attributes)
         if isinstance(mapped, SkipReason):
             self._count_skip(mapped.value)
@@ -129,9 +148,6 @@ class MetergraphGenAIExporter(SpanExporter):
         )
         context = span.context
         parent = span.parent
-        resource_attributes = (
-            span.resource.attributes if span.resource is not None else {}
-        )
         function_name = attributes.get("code.function.name")
         if not isinstance(function_name, str) or not function_name:
             function_name = span.name

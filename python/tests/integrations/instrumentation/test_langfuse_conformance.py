@@ -5,10 +5,16 @@ The spans come from ``fixtures/langfuse/otel_spans_python_v5.json`` (Langfuse
 Python SDK 5.2.0, captured offline) and the expected values from
 ``fixtures/langfuse/conformance_manifest.json`` (what the flows sent to a
 Langfuse project and what Langfuse reported back). Neither is hand-written.
+
+When the Langfuse SDK and its integrations are installed (the pinned
+``upstream-dialects`` workflow), every test also runs against spans captured
+live from that version by ``capture_spans.capture()``: manual generations,
+``@observe`` with ``langfuse.openai``, and the LangChain handler, all offline.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import json
 from pathlib import Path
 
@@ -26,6 +32,31 @@ from metergraph.opentelemetry import MetergraphGenAIExporter
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "langfuse"
 MANIFEST = json.loads((FIXTURES / "conformance_manifest.json").read_text())
 SPANS = json.loads((FIXTURES / "otel_spans_python_v5.json").read_text())
+
+
+def _live_available() -> bool:
+    return all(
+        importlib.util.find_spec(name) is not None
+        for name in ("langfuse", "langchain_openai", "httpx")
+    )
+
+
+SOURCES = ["fixture", *(["live"] if _live_available() else [])]
+_LIVE: dict = {}
+
+
+def _payload(source: str) -> dict:
+    if source == "fixture":
+        return SPANS
+    if "payload" not in _LIVE:
+        spec = importlib.util.spec_from_file_location(
+            "langfuse_capture_spans", FIXTURES / "capture_spans.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        # The Langfuse client is a process-wide singleton: capture once.
+        _LIVE["payload"] = module.capture()
+    return _LIVE["payload"]
 
 # Span name -> manifest observation key, for spans not named "gen-<key>".
 _SPAN_KEYS = {
@@ -90,8 +121,9 @@ def _readable(record: dict) -> ReadableSpan:
     )
 
 
-@pytest.fixture(scope="module")
-def replay():
+@pytest.fixture(scope="module", params=SOURCES)
+def replay(request):
+    payload = _payload(request.param)
     rows = _Rows()
     previous = _capture._get_runtime()
     _capture.set_runtime(Runtime(rows, Options(app_root="")))
@@ -99,17 +131,17 @@ def replay():
     metergraph.init = lambda *args, **kwargs: None
     try:
         exporter = MetergraphGenAIExporter()
-        exporter.export([_readable(record) for record in SPANS["spans"]])
+        exporter.export([_readable(record) for record in payload["spans"]])
     finally:
         metergraph.init = init
         _capture.set_runtime(previous)
     names = [
         record["name"]
-        for record in SPANS["spans"]
+        for record in payload["spans"]
         if MANIFEST["observations"][_key(record["name"])].get("cost_bearing")
     ]
     assert len(rows.rows) == len(names)
-    return exporter, {_key(name): row for name, row in zip(names, rows.rows)}
+    return exporter, {_key(name): row for name, row in zip(names, rows.rows)}, payload
 
 
 def _cost_bearing_keys() -> list[str]:
@@ -125,10 +157,10 @@ def _bucket(usage: dict, keys: tuple[str, ...]) -> int | None:
 
 
 def test_every_cost_bearing_observation_becomes_one_row_and_structure_is_skipped(replay):
-    exporter, rows = replay
+    exporter, rows, payload = replay
     structure = [
         record
-        for record in SPANS["spans"]
+        for record in payload["spans"]
         if not MANIFEST["observations"][_key(record["name"])].get("cost_bearing")
     ]
     assert set(rows) == set(_cost_bearing_keys())
@@ -138,7 +170,7 @@ def test_every_cost_bearing_observation_becomes_one_row_and_structure_is_skipped
 
 @pytest.mark.parametrize("key", _cost_bearing_keys())
 def test_provider_is_resolved_never_the_telemetry_vendor(replay, key):
-    _, rows = replay
+    _, rows, _ = replay
     expected = MANIFEST["observations"][key]["expected_providers"]
     assert rows[key]["provider"] in expected
 
@@ -151,7 +183,7 @@ def test_token_buckets_match_langfuse_readback(replay, key):
     native input does (OpenAI-family), so the catalog prices the same tokens
     Langfuse priced.
     """
-    _, rows = replay
+    _, rows, _ = replay
     row = rows[key]
     usage = MANIFEST["langfuse_readback"][key]["usageDetails"]
     cache_read = _bucket(usage, _CACHE_READ)
@@ -173,7 +205,7 @@ def test_token_buckets_match_langfuse_readback(replay, key):
 
 @pytest.mark.parametrize("key", _cost_bearing_keys())
 def test_caller_supplied_langfuse_cost_is_reported(replay, key):
-    _, rows = replay
+    _, rows, _ = replay
     supplied = MANIFEST["observations"][key].get("cost_supplied")
     row = rows[key]
     if supplied is None:
@@ -189,7 +221,7 @@ def test_caller_supplied_langfuse_cost_is_reported(replay, key):
 
 @pytest.mark.parametrize("key", _cost_bearing_keys())
 def test_time_to_first_token_is_kept_when_langfuse_has_one(replay, key):
-    _, rows = replay
+    _, rows, _ = replay
     readback = MANIFEST["langfuse_readback"][key]["timeToFirstToken"]
     if readback is None:
         assert rows[key]["ttft_ms"] is None
@@ -198,7 +230,7 @@ def test_time_to_first_token_is_kept_when_langfuse_has_one(replay, key):
 
 
 def test_error_keeps_langfuse_status_message_and_type(replay):
-    _, rows = replay
+    _, rows, _ = replay
     expected = MANIFEST["observations"]["error_call"]["status_message"]
     row = rows["error_call"]
     assert row["error"] is True
@@ -209,9 +241,19 @@ def test_error_keeps_langfuse_status_message_and_type(replay):
             assert other["error"] is False, key
 
 
+def _emits_release(payload: dict) -> bool:
+    # Langfuse v3 keeps release on its own tracer provider's Resource, so with
+    # an application-supplied provider no span carries it (and Langfuse itself
+    # records none). v4+ put it on every span.
+    return any(
+        "langfuse.release" in record["attributes"] or "langfuse.release" in record["resource"]
+        for record in payload["spans"]
+    )
+
+
 @pytest.mark.parametrize("key", _cost_bearing_keys())
 def test_trace_attribution_lands_on_the_row(replay, key):
-    _, rows = replay
+    _, rows, payload = replay
     row = rows[key]
     observation = MANIFEST["observations"][key]
     trace = MANIFEST["traces"][_TRACE_OF_STYLE[observation.get("style", "manual")]]
@@ -222,7 +264,10 @@ def test_trace_attribution_lands_on_the_row(replay, key):
     # The manifest stores the session id hashed; the span carries the raw one.
     assert (row["session_id"] is not None) == ("session_id" in trace)
     assert row["environment"] == MANIFEST["environment"]
-    assert tags["langfuse.release"] == MANIFEST["release"]
+    if _emits_release(payload):
+        assert tags["langfuse.release"] == MANIFEST["release"]
+    else:
+        assert "langfuse.release" not in tags
     # The fixture's run tag replaces the seeded one, so compare the others.
     for tag in trace["tags"]:
         if tag.startswith("mg-conformance-"):
@@ -241,7 +286,7 @@ def test_trace_attribution_lands_on_the_row(replay, key):
 
 @pytest.mark.parametrize("key", _cost_bearing_keys())
 def test_route_is_the_prompt_or_the_trace_never_the_operation(replay, key):
-    _, rows = replay
+    _, rows, _ = replay
     row = rows[key]
     prompt = MANIFEST["observations"][key].get("prompt")
     if prompt:
@@ -256,12 +301,12 @@ def test_route_is_the_prompt_or_the_trace_never_the_operation(replay, key):
 
 
 def test_model_parameters_are_kept_on_the_request(replay):
-    _, rows = replay
+    _, rows, _ = replay
     request = json.loads(rows["o4_mini"]["request_json"])
     assert request["parameters"] == MANIFEST["observations"]["o4_mini"]["model_parameters"]
 
 
 def test_embedding_is_an_embeddings_call(replay):
-    _, rows = replay
+    _, rows, _ = replay
     assert rows["embedding"]["endpoint"] == "embeddings"
     assert rows["embedding"]["model"] == MANIFEST["observations"]["embedding"]["model"]

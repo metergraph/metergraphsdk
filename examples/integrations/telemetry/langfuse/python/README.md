@@ -1,7 +1,7 @@
 # Langfuse SDK live capture
 
 Use this integration when your application already traces LLM calls with the
-[Langfuse Python SDK](https://langfuse.com/docs/sdk/python) (v3/v4, which is
+[Langfuse Python SDK](https://langfuse.com/docs/sdk/python) (v3, v4 or v5, all
 OpenTelemetry-based) and you want MeterGraph to receive the same completed
 generation spans. MeterGraph is added as one more span processor on the
 tracer provider Langfuse uses; existing `@observe` decorators and Langfuse
@@ -28,27 +28,9 @@ export METERGRAPH_REPOSITORY=owner/repository
 
 ## Real-world setup
 
-The exporter must be attached to whichever tracer provider carries Langfuse's
-spans. There are two routes, depending on how your application configures
-Langfuse:
-
-**Route 1 — Langfuse uses the global tracer provider.** When Langfuse
-attaches to the globally registered OpenTelemetry `TracerProvider`, add
-MeterGraph to that same provider:
-
-```python
-from opentelemetry import trace
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from metergraph.opentelemetry import MetergraphGenAIExporter
-
-trace.get_tracer_provider().add_span_processor(
-    BatchSpanProcessor(MetergraphGenAIExporter())
-)
-```
-
-**Route 2 — pass Langfuse an explicit provider.** When you construct the
-Langfuse client with your own `tracer_provider`, register MeterGraph's
-processor on it before handing it over:
+The exporter must be on the tracer provider that carries Langfuse's spans.
+The dependable way, on every supported Langfuse version, is to build that
+provider yourself and hand it to Langfuse:
 
 ```python
 from langfuse import Langfuse
@@ -58,22 +40,42 @@ from metergraph.opentelemetry import MetergraphGenAIExporter
 
 provider = TracerProvider()
 provider.add_span_processor(BatchSpanProcessor(MetergraphGenAIExporter()))
-langfuse = Langfuse(tracer_provider=provider)
+langfuse = Langfuse(tracer_provider=provider)  # before any other Langfuse(...)
 ```
 
-**Verify the attachment against your Langfuse SDK version.** This is the
-fiddliest step: whether Langfuse uses the global provider or an internal one
-has changed across v3/v4 releases and configurations. After wiring it up,
-make one traced call and confirm a row reaches MeterGraph; if nothing
-arrives, the exporter is on a different provider than Langfuse's spans.
+Langfuse keeps exporting to Langfuse as before: it adds its own processor to
+the provider you pass. Build this client before anything else calls
+`Langfuse(...)` or `get_client()`, because the client is a process-wide
+singleton bound to the provider it was first built with. `@observe`,
+`langfuse.openai` and the LangChain `CallbackHandler` all use that client, so
+they need no further change.
 
-Only spans with `langfuse.observation.type: generation` become capture rows;
-other observation types (spans, events) are skipped and counted in the
-public `exporter.skipped` dict. To restrict the exporter to Langfuse's spans
-on a shared provider, pass `include_scopes=` / `exclude_scopes=` (matched
-against `span.instrumentation_scope.name`; exclude wins) — print
-`span.instrumentation_scope.name` or watch `exporter.skipped["scope"]` to
-discover the exact scope name your installed Langfuse version emits.
+If your application already registers a global provider that Langfuse uses,
+adding the processor there works too:
+
+```python
+from opentelemetry import trace
+
+trace.get_tracer_provider().add_span_processor(
+    BatchSpanProcessor(MetergraphGenAIExporter())
+)
+```
+
+Make one traced call and confirm a row arrives. If nothing does, the exporter
+is on a different provider from Langfuse's spans.
+
+With Langfuse v3 and an explicit provider, the release (`LANGFUSE_RELEASE`)
+does not reach the spans, so it is not on the rows either; Langfuse records
+none in that setup. v4 and v5 put it on every span.
+
+### Which observations become rows
+
+Generations and embeddings become rows, and so does any other observation
+type that carries a model and usage or cost. Agent, tool, chain, retriever,
+span and event observations without them are skipped and counted in
+`exporter.skipped["ineligible-kind"]`. To restrict the exporter to Langfuse's
+spans on a shared provider, pass `include_scopes=["langfuse-sdk"]` (matched
+against `span.instrumentation_scope.name`; `exclude_scopes` wins).
 
 ## Run the offline demo
 
@@ -84,16 +86,62 @@ python main.py
 [`main.py`](main.py) needs no Langfuse keys, no provider key, and no network:
 it builds a plain `TracerProvider`, attaches `MetergraphGenAIExporter`, and
 emits the same `langfuse.observation.*`-attribute spans the Langfuse SDK
-records for one generation. Open it and search for `MeterGraph integration` —
+records for one generation. Open it and search for `MeterGraph integration`:
 the only integration block is the `add_span_processor` call; everything else
 is synthetic demo traffic.
 
 ## What MeterGraph captures
 
-The exporter maps Langfuse observation attributes — the model name,
-`usage_details` token counts, observation input/output, completion start time
-(as TTFT), session id, trace name, and ERROR level — onto the same capture
-rows as provider-client capture, preserving OpenTelemetry trace identity,
-latency, and error status. Message content is subject to the SDK's normal
-scrub/redact/truncate policy; set `METERGRAPH_CAPTURE_TEXT=0` for
-metadata-only capture.
+Each row keeps what Langfuse recorded for the call:
+
+| Langfuse | Row |
+|---|---|
+| Model name | `model`. The provider comes from LangChain's `ls_provider`, else from the model name (`gpt-*`, `claude-*`, Bedrock ids such as `us.anthropic.*`, gateway prefixes such as `openai/`, Gemini, Mistral and others), else `unknown`. |
+| `usage_details` | Input, output, cache read, cache write (with 5-minute and 1-hour splits) and reasoning tokens. Langfuse counts these as separate buckets; the row restates them in the provider's own convention, so cached input is billed at the cache rate. `langfuse.openai`'s OpenAI usage object is read as is. |
+| `cost_details.total` (when you supply it) | `cost_usd` and `reported_cost_usd`, kept as reported evidence beside MeterGraph's own catalog price. Costs Langfuse infers on its server are not on the span. |
+| Completion start time | `ttft_ms` |
+| Level `ERROR` and status message | `error`, the message in the response record, and `error_type` from the message's leading exception name (for example `RateLimitError`) |
+| Trace name | `trace_name`, and the route |
+| Prompt name and version | The route (explicit), and tags `langfuse.prompt.name` / `langfuse.prompt.version` |
+| User, session, environment | `user_id`, `session_id`, `environment` |
+| Tags | One tag per Langfuse tag: `langfuse.tag.<tag>` = `true` |
+| Release, version | Tags `langfuse.release`, `langfuse.version` |
+| Trace and observation metadata | Tags `langfuse.metadata.<key>` (observation wins over trace). Structured values are compact JSON. |
+| Model parameters, input, output | The request and response records |
+
+Tags follow MeterGraph's usual bounds: at most 32 per row, kept in key order,
+and keys that look like credentials are dropped. Message content is subject to
+the SDK's normal scrub, redact and truncate policy; set
+`METERGRAPH_CAPTURE_TEXT=0` for metadata-only capture.
+
+## TypeScript (Langfuse JS v4 and newer)
+
+Langfuse's JavaScript SDK is OpenTelemetry-based too, so a Node application
+adds a second OTLP exporter that sends the same spans to MeterGraph's
+`/v1/traces` endpoint. No MeterGraph package is needed; MeterGraph's server
+reads the `langfuse.*` attributes the same way this exporter does.
+
+```ts
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
+import { LangfuseSpanProcessor } from "@langfuse/otel";
+
+const sdk = new NodeSDK({
+  spanProcessors: [
+    new LangfuseSpanProcessor(), // existing export to Langfuse
+    new BatchSpanProcessor(
+      new OTLPTraceExporter({
+        url: "https://<your-metergraph-host>/v1/traces",
+        headers: { Authorization: `Bearer ${process.env.METERGRAPH_APP_TOKEN}` },
+      }),
+    ),
+  ],
+});
+sdk.start();
+```
+
+Use an ingest-scoped key and keep it on the server: never ship it to a
+browser. Spans that are not model calls are counted and dropped by the
+endpoint, so the second exporter needs no filter.
+
