@@ -698,6 +698,7 @@ def _langfuse(**extra):
         ("anthropic/claude-sonnet-4", "anthropic"),
         ("mistral-large-latest", "mistral"),
         ("gemini-2.5-flash", "google"),
+        ("text-embedding-004", "google"),
         ("grok-4", "xai"),
         ("in-house-model-7", None),
         ("someone/else", None),
@@ -899,3 +900,27 @@ def test_cost_details_without_total_sums_its_parts():
         _langfuse(**{"langfuse.observation.cost_details": '{"input": 0.25, "output": 0.5}'})
     )
     assert mapped.cost == 0.75
+
+
+def test_native_gemini_usage_passes_through():
+    mapped = map_span_attributes(
+        _langfuse(
+            **{
+                "langfuse.observation.model.name": "gemini-2.5-flash",
+                "langfuse.observation.usage_details": json.dumps(
+                    {
+                        "promptTokenCount": 100,
+                        "candidatesTokenCount": 25,
+                        "cachedContentTokenCount": 60,
+                        "thoughtsTokenCount": 5,
+                    }
+                ),
+            }
+        )
+    )
+    counts = _usage(mapped.response)
+    assert counts["input_tokens"] == 100
+    # The capture layer bills Gemini thoughts as output, as for a wrapped call.
+    assert counts["output_tokens"] == 30
+    assert counts["cache_read_tokens"] == 60
+    assert mapped.dropped_usage_keys == ()

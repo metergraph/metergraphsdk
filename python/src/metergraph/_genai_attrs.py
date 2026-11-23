@@ -100,6 +100,23 @@ _LANGFUSE_CACHE_WRITE_5M_KEYS = ("input_cache_creation_5m",)
 _LANGFUSE_CACHE_WRITE_1H_KEYS = ("input_cache_creation_1h",)
 _LANGFUSE_REASONING_KEYS = ("output_reasoning_tokens", "output_reasoning")
 _LANGFUSE_USAGE_IGNORED = frozenset({"total", "total_tokens"})
+# Keys only a provider's own usage object uses (OpenAI chat, Gemini), never
+# Langfuse's buckets: their presence means the object passes through as is.
+_PROVIDER_USAGE_KEYS = frozenset(
+    {
+        "prompt_tokens",
+        "completion_tokens",
+        "prompt_token_count",
+        "promptTokenCount",
+        "candidates_token_count",
+        "candidatesTokenCount",
+        "cached_content_token_count",
+        "cachedContentTokenCount",
+        "thoughts_token_count",
+        "thoughtsTokenCount",
+        "cacheCreationInputTokens",
+    }
+)
 
 # Providers whose native input count already includes cache reads, so a row
 # in their native convention restates Langfuse's uncached "input" as
@@ -166,7 +183,7 @@ def _is_provider_usage(decoded: Mapping[str, Any]) -> bool:
     capture layer reads, so it passes through instead of being flattened,
     which used to drop every nested cached and reasoning count.
     """
-    return any(key in decoded for key in ("prompt_tokens", "completion_tokens")) or any(
+    return any(key in decoded for key in _PROVIDER_USAGE_KEYS) or any(
         isinstance(value, Mapping) for value in decoded.values()
     )
 
@@ -544,9 +561,11 @@ _BEDROCK_VENDORS = ("anthropic.", "amazon.", "meta.", "cohere.", "ai21.", "mistr
 _BEDROCK_PROFILES = ("us.", "eu.", "apac.", "global.", "us-gov.", "ca.", "jp.", "au.")
 # Bare model-name families whose provider is unambiguous.
 _MODEL_NAME_PROVIDERS = (
+    # Before OpenAI's broad "text-embedding-" prefix.
+    (("text-embedding-004", "text-embedding-005", "text-multilingual-embedding", "textembedding-gecko"), "google"),
     (("gpt-", "chatgpt-", "o1", "o3", "o4", "text-embedding-", "davinci", "babbage", "dall-e", "whisper", "tts-", "omni-moderation", "codex-"), "openai"),
     (("claude",), "anthropic"),
-    (("gemini", "text-embedding-004", "textembedding-gecko"), "google"),
+    (("gemini",), "google"),
     (("mistral", "mixtral", "codestral", "magistral", "ministral", "pixtral", "open-mistral", "open-mixtral"), "mistral"),
     (("grok",), "xai"),
     (("deepseek",), "deepseek"),
