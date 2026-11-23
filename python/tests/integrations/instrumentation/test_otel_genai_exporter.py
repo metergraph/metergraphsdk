@@ -685,7 +685,7 @@ def test_langfuse_unplaced_model_is_unknown_provider(monkeypatch):
                 "gen_ai.prompt.name": "triage",
             },
             (),
-            ("synthetic-trace", "derived"),
+            ("synthetic-trace", "explicit"),
         ),
         # No trace name: the observation (span) name.
         ({}, ("langfuse.trace.name",), ("chat claude-opus-5", "derived")),

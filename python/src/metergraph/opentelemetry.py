@@ -197,12 +197,12 @@ class MetergraphGenAIExporter(SpanExporter):
         )
         if named_route is None and scope_name == LITELLM_SCOPE:
             named_route = litellm_route(span.name, attributes)
-        # A Langfuse span routes by its trace name, else its observation name,
-        # the same rule as Langfuse imports, so every path keys one workflow
-        # the same way.
-        derived_route = (
-            (mapped.trace_name or span.name) if langfuse else None
-        ) or mapped.operation
+        # A Langfuse span routes by its trace name (a name the developer
+        # chose), else its observation name: the same rule as Langfuse
+        # imports, so every path keys one workflow the same way.
+        if named_route is None and langfuse:
+            named_route = mapped.trace_name
+        derived_route = (span.name if langfuse else None) or mapped.operation
         call = runtime.call_state(
             provider,
             mapped.operation,

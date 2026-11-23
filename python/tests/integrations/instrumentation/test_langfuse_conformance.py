@@ -290,7 +290,7 @@ def test_route_is_the_trace_name_never_the_prompt_or_operation(replay, key):
     _, rows, _ = replay
     row = rows[key]
     assert row["route"] == row["trace_name"]
-    assert row["route_source"] == "derived"
+    assert row["route_source"] == "explicit"
     assert row["route"] != "inference"
     prompt = MANIFEST["observations"][key].get("prompt")
     if prompt:
