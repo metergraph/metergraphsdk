@@ -105,3 +105,30 @@ def test_evidence_preserves_raw_multi_choice_and_prompt_block_facts():
 
     assert model_evidence(stream_chunks=[{'type': 'response.refusal.delta'}]) == {
         'http_status_code': None, 'error_code': None, 'refusal_signal': True, 'response_received': True}
+
+
+def test_blank_finish_reason_preserves_lifecycle_status():
+    from metergraph._capture import Options, Runtime
+
+    rows = []
+
+    class Sink:
+        def enqueue(self, row):
+            rows.append(row)
+            return True
+
+    runtime = Runtime(Sink(), Options(capture_text=False))
+    for reason in ('', ' \t ', 'length'):
+        for extra, expected in (
+            ({}, 'length' if reason == 'length' else 'success'),
+            ({'error': RuntimeError('synthetic failure'), 'stream': True}, 'error'),
+            ({'status': 'abandoned', 'stream': True}, 'abandoned'),
+        ):
+            state = runtime.call_state('openai', 'chat.completions', {'model': 'example-model'})
+            state.finish({'choices': [{'finish_reason': reason}]}, **extra)
+            row = rows[-1]
+            assert row['status'] == expected
+            if extra:
+                assert row['usage_complete'] is False
+            if reason.strip() != reason:
+                assert row['finish_reason_raw'] == reason
