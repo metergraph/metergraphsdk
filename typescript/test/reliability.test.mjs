@@ -155,3 +155,24 @@ test("evidence preserves raw multi-choice and prompt-block facts", async () => {
     http_status_code: null, error_code: null, refusal_signal: true, response_received: true,
   });
 });
+
+
+test('blank finish reason preserves lifecycle status', () => {
+  const rows = [];
+  const runtime = new CaptureRuntime({enqueue(row) { rows.push(row); return true; }},
+    {captureText: false, appRoot: '', skipFrames: [], textMaxBytes: DEFAULT_TEXT_MAX_BYTES});
+  for (const reason of ['', ' \t ', 'length']) {
+    for (const [extra, expected] of [
+      [{}, reason === 'length' ? 'length' : 'success'],
+      [{error: new Error('synthetic failure'), stream: true}, 'error'],
+      [{status: 'abandoned', stream: true}, 'abandoned'],
+    ]) {
+      runtime.finish(runtime.start('openai', 'chat.completions.create', {model: 'example-model'}),
+        {choices: [{finish_reason: reason}]}, extra);
+      const row = rows.at(-1);
+      assert.equal(row.status, expected);
+      if (extra.stream) assert.equal(row.usage_complete, false);
+      if (reason.trim() !== reason) assert.equal(row.finish_reason_raw, reason);
+    }
+  }
+});

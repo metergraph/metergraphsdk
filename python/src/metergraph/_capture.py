@@ -1123,8 +1123,9 @@ class CallState:
                 self.request, self.provider, enabled=capture_text
             )
         )
+        reason = _stop_reason(response)
         effective_status = status or (
-            "error" if error else _stop_reason(response) or "success"
+            "error" if error else (reason if reason and reason.strip() else "success")
         )
         finish_reason, finish_reason_raw = _finish_reason_details(response)
         status_code = (
