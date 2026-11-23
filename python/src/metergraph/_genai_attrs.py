@@ -27,6 +27,7 @@ from __future__ import annotations
 import ast
 import enum
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
@@ -66,31 +67,45 @@ class MappedCall:
     parse_degraded: bool
     usage_absent: bool
     dropped_usage_keys: tuple[str, ...]
+    # Attribution carried by dialects that record it (today: Langfuse).
+    user_id: str | None = None
+    environment: str | None = None
+    tags: Mapping[str, str] = field(default_factory=dict)
+    # An explicit workload name the dialect recorded (a Langfuse prompt name).
+    route_name: str | None = None
+    error_type: str | None = None
 
 
-# Top-level usage keys _capture._usage understands, verbatim.
-_USAGE_TOP_KEYS = frozenset(
-    {
-        "prompt_tokens",
-        "input_tokens",
-        "prompt_token_count",
-        "promptTokenCount",
-        "completion_tokens",
-        "output_tokens",
-        "candidates_token_count",
-        "candidatesTokenCount",
-        "cache_read_input_tokens",
-        "cached_content_token_count",
-        "cachedContentTokenCount",
-        "cache_creation_input_tokens",
-        "cacheCreationInputTokens",
-        "thoughts_token_count",
-        "thoughtsTokenCount",
-    }
+# Langfuse usage_details keys, grouped by the bucket they count. Langfuse's
+# buckets are disjoint ("input" excludes cached tokens, "output" excludes
+# reasoning), which is how its server prices them; the spellings are the ones
+# its own integrations and default model prices use. The first key present in
+# a group wins, so two spellings of one bucket are never summed.
+_LANGFUSE_INPUT_KEYS = ("input", "input_tokens")
+_LANGFUSE_OUTPUT_KEYS = ("output", "output_tokens")
+_LANGFUSE_CACHE_READ_KEYS = (
+    "input_cached_tokens",
+    "input_cache_read",
+    "cache_read_input_tokens",
+    "cache_read_tokens",
 )
+_LANGFUSE_CACHE_WRITE_KEYS = (
+    "input_cache_creation",
+    "cache_creation_input_tokens",
+    "input_cache_write_tokens",
+    "cache_write_tokens",
+    "input_cache_write",
+)
+_LANGFUSE_CACHE_WRITE_5M_KEYS = ("input_cache_creation_5m",)
+_LANGFUSE_CACHE_WRITE_1H_KEYS = ("input_cache_creation_1h",)
+_LANGFUSE_REASONING_KEYS = ("output_reasoning_tokens", "output_reasoning")
+_LANGFUSE_USAGE_IGNORED = frozenset({"total", "total_tokens"})
 
-# Langfuse usage_details spellings that translate onto that vocabulary.
-_LANGFUSE_USAGE_RENAMES = {"input": "input_tokens", "output": "output_tokens"}
+# Providers whose native input count already includes cache reads, so a row
+# in their native convention restates Langfuse's uncached "input" as
+# input + cache read. Mirrors the hosted catalog's (publisher, channel) list;
+# every other provider, unknown ones included, counts input without cache.
+_INPUT_INCLUDES_CACHE_READ = frozenset({"openai", "google", "deepseek", "xai"})
 
 # LangChain's standard token-detail keys, as LangSmith forwards them in
 # gen_ai.usage.{input,output}_token_details. "audio" has no home in the alias
@@ -120,27 +135,96 @@ _PROVIDER_ALIASES = {
 }
 
 
-def map_usage_details(
-    decoded: Mapping[str, Any],
-) -> tuple[dict[str, Any], tuple[str, ...]]:
-    """Map Langfuse usage-details keys onto the ``_usage`` alias vocabulary.
+def _count(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return None
 
-    Returns ``(usage, dropped_keys)``: the renamed keys the capture layer
-    understands, plus the sorted source keys that did not translate. The
-    derived ``"total"`` key is skipped silently (it is neither mapped nor
-    reported as dropped).
+
+def _first_count(
+    decoded: Mapping[str, Any], keys: Sequence[str], used: set[str]
+) -> int | None:
+    for key in keys:
+        if key in decoded:
+            used.add(key)
+            count = _count(decoded[key])
+            if count is not None:
+                return count
+    return None
+
+
+def _is_provider_usage(decoded: Mapping[str, Any]) -> bool:
+    """Whether usage_details is a provider's own usage object, not Langfuse's.
+
+    ``langfuse.openai`` records the OpenAI response's usage verbatim:
+    ``prompt_tokens`` (which includes cached tokens) with nested
+    ``prompt_tokens_details``. That shape is already in the convention the
+    capture layer reads, so it passes through instead of being flattened,
+    which used to drop every nested cached and reasoning count.
     """
+    return any(key in decoded for key in ("prompt_tokens", "completion_tokens")) or any(
+        isinstance(value, Mapping) for value in decoded.values()
+    )
+
+
+def map_usage_details(
+    decoded: Mapping[str, Any], provider: str | None = None
+) -> tuple[dict[str, Any], tuple[str, ...]]:
+    """Map Langfuse usage details onto the ``_usage`` alias vocabulary.
+
+    Returns ``(usage, dropped_keys)``: usage in ``provider``'s native
+    convention, plus the sorted source keys that did not translate. A
+    provider's own usage object passes through unchanged. Langfuse's disjoint
+    buckets are restated: output counts reasoning (every catalog prices
+    reasoning at the output rate), and input counts cache reads for providers
+    whose native input does. The derived ``"total"`` is skipped silently.
+    """
+    if _is_provider_usage(decoded):
+        return {
+            key: value
+            for key, value in decoded.items()
+            if key not in _LANGFUSE_USAGE_IGNORED
+        }, ()
+    used: set[str] = set()
+    input_tokens = _first_count(decoded, _LANGFUSE_INPUT_KEYS, used)
+    output_tokens = _first_count(decoded, _LANGFUSE_OUTPUT_KEYS, used)
+    cache_read = _first_count(decoded, _LANGFUSE_CACHE_READ_KEYS, used)
+    cache_write = _first_count(decoded, _LANGFUSE_CACHE_WRITE_KEYS, used)
+    cache_write_5m = _first_count(decoded, _LANGFUSE_CACHE_WRITE_5M_KEYS, used)
+    cache_write_1h = _first_count(decoded, _LANGFUSE_CACHE_WRITE_1H_KEYS, used)
+    reasoning = _first_count(decoded, _LANGFUSE_REASONING_KEYS, used)
+
     usage: dict[str, Any] = {}
-    dropped: list[str] = []
-    for key, value in decoded.items():
-        if key == "total":
-            continue
-        canonical = _LANGFUSE_USAGE_RENAMES.get(key, key)
-        if canonical in _USAGE_TOP_KEYS:
-            usage[canonical] = value
-        else:
-            dropped.append(key)
-    return usage, tuple(sorted(dropped))
+    if input_tokens is not None or cache_read:
+        if (provider or "").lower() in _INPUT_INCLUDES_CACHE_READ:
+            usage["input_tokens"] = (input_tokens or 0) + (cache_read or 0)
+        elif input_tokens is not None:
+            usage["input_tokens"] = input_tokens
+    if output_tokens is not None or reasoning:
+        usage["output_tokens"] = (output_tokens or 0) + (reasoning or 0)
+    if cache_read is not None:
+        usage["cache_read_input_tokens"] = cache_read
+    if cache_write is None and (cache_write_5m or cache_write_1h):
+        cache_write = (cache_write_5m or 0) + (cache_write_1h or 0)
+    if cache_write is not None:
+        usage["cache_creation_input_tokens"] = cache_write
+    if cache_write_5m is not None or cache_write_1h is not None:
+        usage["cache_creation"] = {
+            "ephemeral_5m_input_tokens": cache_write_5m,
+            "ephemeral_1h_input_tokens": cache_write_1h,
+        }
+    if reasoning is not None:
+        usage["reasoning_tokens"] = reasoning
+    dropped = sorted(
+        key
+        for key in decoded
+        if key not in used and key not in _LANGFUSE_USAGE_IGNORED
+    )
+    return usage, tuple(dropped)
 
 
 def _string(value: Any) -> str | None:
@@ -260,6 +344,11 @@ class _Fields:
     error_message: str | None = None
     parse_degraded: bool = False
     dropped_usage_keys: tuple[str, ...] = ()
+    user_id: str | None = None
+    environment: str | None = None
+    tags: dict[str, str] = field(default_factory=dict)
+    route_name: str | None = None
+    error_type: str | None = None
 
 
 def _extract_genai(attributes: Mapping[str, Any]) -> _Fields:
@@ -432,15 +521,201 @@ def _extract_openinference(attributes: Mapping[str, Any]) -> _Fields:
     return fields
 
 
+# Gateway-style "<provider>/<model>" prefixes (OpenRouter, LiteLLM, the
+# Langfuse AI gateway) that name the provider outright.
+_MODEL_PREFIX_PROVIDERS = {
+    "anthropic": "anthropic",
+    "azure": "azure",
+    "bedrock": "bedrock",
+    "deepseek": "deepseek",
+    "gemini": "google",
+    "google": "google",
+    "groq": "groq",
+    "mistral": "mistral",
+    "mistralai": "mistral",
+    "openai": "openai",
+    "vertex_ai": "google",
+    "x-ai": "xai",
+    "xai": "xai",
+}
+# Bedrock model ids: "<vendor>.<model>", optionally behind a cross-region
+# inference profile ("us.", "eu.", "apac.", "global.").
+_BEDROCK_VENDORS = ("anthropic.", "amazon.", "meta.", "cohere.", "ai21.", "mistral.")
+_BEDROCK_PROFILES = ("us.", "eu.", "apac.", "global.", "us-gov.", "ca.", "jp.", "au.")
+# Bare model-name families whose provider is unambiguous.
+_MODEL_NAME_PROVIDERS = (
+    (("gpt-", "chatgpt-", "o1", "o3", "o4", "text-embedding-", "davinci", "babbage", "dall-e", "whisper", "tts-", "omni-moderation", "codex-"), "openai"),
+    (("claude",), "anthropic"),
+    (("gemini", "text-embedding-004", "textembedding-gecko"), "google"),
+    (("mistral", "mixtral", "codestral", "magistral", "ministral", "pixtral", "open-mistral", "open-mixtral"), "mistral"),
+    (("grok",), "xai"),
+    (("deepseek",), "deepseek"),
+    (("command", "embed-english", "embed-multilingual"), "cohere"),
+)
+
+
+def provider_from_model(model: str | None) -> str | None:
+    """The provider a Langfuse model name identifies, or None when it does not.
+
+    Langfuse prices by model name alone and records no provider, so this is
+    the only provider evidence a manual or ``@observe`` generation carries.
+    Deliberately conservative: a name it cannot place stays unresolved rather
+    than being guessed into a priced provider.
+    """
+    if not model:
+        return None
+    name = model.strip().lower()
+    prefix, slash, rest = name.partition("/")
+    if slash and rest:
+        return _MODEL_PREFIX_PROVIDERS.get(prefix)
+    bare = name
+    for profile in _BEDROCK_PROFILES:
+        if bare.startswith(profile):
+            bare = bare[len(profile) :]
+            break
+    if bare.startswith(_BEDROCK_VENDORS) and (bare != name or ":" in bare or "-v" in bare):
+        return "bedrock"
+    for prefixes, provider in _MODEL_NAME_PROVIDERS:
+        if name.startswith(prefixes):
+            return provider
+    return None
+
+
+# Status messages that open with an exception class name, as Langfuse
+# integrations write them ("RateLimitError: 429 ...").
+_ERROR_TYPE = re.compile(r"^\s*([A-Za-z_][\w.]*?(?:Error|Exception|Timeout|Exceeded))\b")
+
+
+def error_type_from_message(message: str | None) -> str | None:
+    if not message:
+        return None
+    match = _ERROR_TYPE.match(message)
+    return match.group(1).rsplit(".", 1)[-1] if match else None
+
+
+def _attribute_text(value: Any) -> str | None:
+    """A Langfuse attribute value as tag text.
+
+    Langfuse JSON-encodes metadata values, so a decoded string is the value
+    itself and anything else stays compact JSON.
+    """
+    if isinstance(value, str):
+        decoded, ok = _load_json(value)
+        if ok and isinstance(decoded, str):
+            return decoded
+        if ok and decoded is not None:
+            return json.dumps(decoded, separators=(",", ":"), ensure_ascii=False)
+        return value if value else None
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, (list, tuple, Mapping)):
+        return json.dumps(value, separators=(",", ":"), ensure_ascii=False, default=str)
+    return None
+
+
+def _langfuse_tags(attributes: Mapping[str, Any]) -> list[str]:
+    raw = attributes.get("langfuse.trace.tags")
+    if raw is None:
+        raw = attributes.get("langfuse.tags")
+    if isinstance(raw, str):
+        decoded, ok = _load_json(raw)
+        if ok and isinstance(decoded, list):
+            raw = decoded
+        else:
+            raw = [part.strip() for part in raw.split(",")]
+    if not isinstance(raw, Sequence) or isinstance(raw, (str, bytes)):
+        return []
+    return sorted({str(tag) for tag in raw if str(tag).strip()})
+
+
+def _langfuse_metadata(attributes: Mapping[str, Any]) -> dict[str, str]:
+    """Trace then observation metadata, one tag per top-level key.
+
+    Langfuse writes each key as its own ``<prefix>.<key>`` attribute (v3+);
+    a whole-object JSON value under the bare prefix is the older form.
+    Observation metadata wins over trace metadata for the same key.
+    """
+    merged: dict[str, str] = {}
+    for prefix in (
+        "langfuse.metadata",
+        "langfuse.trace.metadata",
+        "langfuse.observation.metadata",
+    ):
+        whole = attributes.get(prefix)
+        if isinstance(whole, str):
+            decoded, ok = _load_json(whole)
+            if ok and isinstance(decoded, Mapping):
+                for key, value in decoded.items():
+                    text = _attribute_text(
+                        value if isinstance(value, str) else json.dumps(value)
+                    )
+                    if text is not None:
+                        merged[str(key)] = text
+        lead = prefix + "."
+        for key, value in attributes.items():
+            if key.startswith(lead) and len(key) > len(lead):
+                text = _attribute_text(value)
+                if text is not None:
+                    merged[key[len(lead) :]] = text
+    return merged
+
+
 def _extract_langfuse(attributes: Mapping[str, Any]) -> _Fields:
     fields = _Fields()
     fields.model = _string(attributes.get("langfuse.observation.model.name"))
-    # Session is one of the trace-level fields the Langfuse SDK spells WITHOUT
-    # its own prefix: both v3 and v4 define TRACE_SESSION_ID = "session.id"
-    # and propagate it through baggage. There has never been a
-    # langfuse.session.id, so do not "helpfully" add one.
-    fields.session_id = _string(attributes.get("session.id"))
+    if _string(attributes.get("langfuse.observation.type")) == "embedding":
+        fields.operation = "embeddings"
+    # Session and user are trace-level fields the Langfuse SDK spells WITHOUT
+    # its own prefix (TRACE_SESSION_ID = "session.id", TRACE_USER_ID =
+    # "user.id") in Python v3-v5 and JS v4+. Langfuse's server also accepts
+    # the langfuse.-prefixed compat spellings, so they are read second.
+    fields.session_id = _string(attributes.get("session.id")) or _string(
+        attributes.get("langfuse.session.id")
+    )
+    fields.user_id = _string(attributes.get("user.id")) or _string(
+        attributes.get("langfuse.user.id")
+    )
     fields.trace_name = _string(attributes.get("langfuse.trace.name"))
+    fields.environment = (
+        _string(attributes.get("langfuse.environment"))
+        or _string(attributes.get("deployment.environment.name"))
+        or _string(attributes.get("deployment.environment"))
+    )
+
+    metadata = _langfuse_metadata(attributes)
+    # LangChain's handler records the provider it called as ls_provider
+    # metadata; that is better evidence than the model name.
+    fields.provider = _canonical_provider(metadata.get("ls_provider")) or (
+        provider_from_model(fields.model)
+    )
+    tags: dict[str, str] = {
+        f"langfuse.metadata.{key}": value for key, value in metadata.items()
+    }
+    for tag in _langfuse_tags(attributes):
+        tags[f"langfuse.tag.{tag}"] = "true"
+    for attribute, tag in (
+        ("langfuse.release", "langfuse.release"),
+        ("langfuse.version", "langfuse.version"),
+    ):
+        value = _attribute_text(attributes.get(attribute))
+        if value is not None:
+            tags[tag] = value
+    prompt_name = _string(attributes.get("langfuse.observation.prompt.name")) or _string(
+        attributes.get("langfuse.prompt.name")
+    )
+    prompt_version = attributes.get("langfuse.observation.prompt.version")
+    if prompt_version is None:
+        prompt_version = attributes.get("langfuse.prompt.version")
+    if prompt_name is not None:
+        fields.route_name = prompt_name
+        tags["langfuse.prompt.name"] = prompt_name
+        version_text = _attribute_text(prompt_version)
+        if version_text is not None:
+            tags["langfuse.prompt.version"] = version_text
+    fields.tags = tags
+
     completion_start = attributes.get("langfuse.observation.completion_start_time")
     if isinstance(completion_start, str):
         # Langfuse JSON-encodes this timestamp, so the attribute value arrives
@@ -453,10 +728,9 @@ def _extract_langfuse(attributes: Mapping[str, Any]) -> _Fields:
         )
     level = _string(attributes.get("langfuse.observation.level"))
     if level is not None and level.upper() == "ERROR":
-        fields.error_message = (
-            _string(attributes.get("langfuse.observation.status_message"))
-            or "Langfuse observation reported an error"
-        )
+        message = _string(attributes.get("langfuse.observation.status_message"))
+        fields.error_message = message or "Langfuse observation reported an error"
+        fields.error_type = error_type_from_message(message) or "LangfuseObservationError"
 
     parameters = attributes.get("langfuse.observation.model.parameters")
     if isinstance(parameters, str):
@@ -470,7 +744,9 @@ def _extract_langfuse(attributes: Mapping[str, Any]) -> _Fields:
     if isinstance(usage_details, str):
         decoded, ok = _load_json(usage_details)
         if ok and isinstance(decoded, Mapping):
-            mapped_usage, fields.dropped_usage_keys = map_usage_details(decoded)
+            mapped_usage, fields.dropped_usage_keys = map_usage_details(
+                decoded, fields.provider
+            )
             fields.usage.update(mapped_usage)
         else:
             fields.parse_degraded = True
@@ -480,6 +756,10 @@ def _extract_langfuse(attributes: Mapping[str, Any]) -> _Fields:
         decoded, ok = _load_json(cost_details)
         if ok and isinstance(decoded, Mapping):
             total = _number(decoded.get("total"))
+            if total is None:
+                parts = [_number(value) for value in decoded.values()]
+                if parts and all(part is not None for part in parts):
+                    total = sum(parts)  # type: ignore[arg-type]
             if total is not None:
                 fields.cost = total
                 fields.cost_source = "langfuse.observation.cost_details.total"
@@ -492,6 +772,10 @@ def _extract_langfuse(attributes: Mapping[str, Any]) -> _Fields:
         value = decoded if ok else raw_input
         if isinstance(value, list):
             fields.request["messages"] = value
+        elif isinstance(value, Mapping) and isinstance(value.get("messages"), list):
+            # langfuse.openai records the request kwargs; the conversation is
+            # their messages list.
+            fields.request["messages"] = value["messages"]
         else:
             fields.request["input"] = value
 
@@ -620,7 +904,20 @@ def _detected_dialects(attributes: Mapping[str, Any]) -> dict[str, bool | None]:
     detected: dict[str, bool | None] = {}
     if any(key.startswith("langfuse.observation.") for key in attributes):
         observation_type = _string(attributes.get("langfuse.observation.type"))
-        detected[DIALECT_LANGFUSE] = observation_type == "generation"
+        # Generations and embeddings are Langfuse's cost-bearing types. Any
+        # other type (agent, tool, chain, span...) counts only when it carries
+        # a model and usage or cost, so structure spans stay out while a
+        # custom-typed model call is not lost.
+        detected[DIALECT_LANGFUSE] = observation_type in {
+            "generation",
+            "embedding",
+        } or (
+            attributes.get("langfuse.observation.model.name") is not None
+            and (
+                attributes.get("langfuse.observation.usage_details") is not None
+                or attributes.get("langfuse.observation.cost_details") is not None
+            )
+        )
     if (
         attributes.get("gen_ai.request.model") is not None
         or attributes.get("gen_ai.operation.name") is not None
@@ -949,10 +1246,20 @@ def map_span_attributes(
         or any(contribution.parse_degraded for contribution in contributions),
         usage_absent=usage_absent,
         dropped_usage_keys=tuple(sorted(dropped)),
+        user_id=_first_value(contributions, "user_id"),
+        environment=_first_value(contributions, "environment"),
+        tags={
+            key: value
+            for contribution in reversed(contributions)
+            for key, value in contribution.tags.items()
+        },
+        route_name=_first_value(contributions, "route_name"),
+        error_type=_first_value(contributions, "error_type"),
     )
 
 
 __all__ = [
+    "DIALECT_LANGFUSE",
     "LITELLM_SCOPE",
     "MappedCall",
     "SkipReason",

@@ -31,6 +31,9 @@ class CaptureContext:
     trace_name: str | None = None
     parent_span_id: str | None = None
     user_id: str | None = None
+    # Per-call deployment environment recorded by the span's own telemetry;
+    # None falls back to init(environment=...).
+    environment: str | None = None
 
 
 _current: contextvars.ContextVar[CaptureContext] = contextvars.ContextVar(

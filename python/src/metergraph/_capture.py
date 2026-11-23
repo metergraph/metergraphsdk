@@ -1218,7 +1218,7 @@ class CallState:
             "module": self.module,
             "frames_json": self.frames,
             "tags": dict(self.context.tags),
-            "environment": self.runtime.options.environment,
+            "environment": self.context.environment or self.runtime.options.environment,
             "error": status_code == "error",
             "error_type": (attributes or {}).get("error.type") or (type(error).__name__ if error else None),
             "sdk": "python",

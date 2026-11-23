@@ -541,7 +541,7 @@ def _langfuse_attributes() -> dict:
     }
 
 
-def test_langfuse_generation_span_falls_back_to_langfuse_provider(monkeypatch):
+def test_langfuse_generation_span_resolves_provider_from_model(monkeypatch):
     rows = Rows()
     _capture.set_runtime(Runtime(rows, Options(app_root="")))
     monkeypatch.setattr(metergraph, "init", lambda: None)
@@ -551,7 +551,10 @@ def test_langfuse_generation_span_falls_back_to_langfuse_provider(monkeypatch):
 
     assert len(rows.rows) == 1
     row = rows.rows[0]
-    assert row["provider"] == "langfuse"
+    # Langfuse records no provider; the model name places it, never the
+    # telemetry vendor's name.
+    assert row["provider"] == "anthropic"
+    assert row["route"] == "synthetic-trace"
     assert row["model"] == "claude-opus-5"
     assert row["input_tokens"] == 11
     assert row["output_tokens"] == 4
@@ -651,7 +654,22 @@ def test_langfuse_error_level_marks_row_error(monkeypatch):
     row = rows.rows[0]
     assert row["status_code"] == "error"
     assert row["error"] is True
-    assert row["error_type"] == "OpenTelemetrySpanError"
+    # No exception name opens the message, so the type says where it came from.
+    assert row["error_type"] == "LangfuseObservationError"
+    assert "synthetic Langfuse failure" in row["response_text"]
+    _capture.set_runtime(None)
+
+
+def test_langfuse_unplaced_model_is_unknown_provider(monkeypatch):
+    rows = Rows()
+    _capture.set_runtime(Runtime(rows, Options(app_root="")))
+    monkeypatch.setattr(metergraph, "init", lambda: None)
+    attributes = _langfuse_attributes()
+    attributes["langfuse.observation.model.name"] = "in-house-model-7"
+
+    MetergraphGenAIExporter().export([_span(attributes)])
+
+    assert rows.rows[0]["provider"] == "unknown"
     _capture.set_runtime(None)
 
 

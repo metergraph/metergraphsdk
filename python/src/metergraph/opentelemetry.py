@@ -16,9 +16,10 @@ from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 from opentelemetry.trace import StatusCode
 
 from ._capture import _get_runtime
-from ._context import CaptureContext
+from ._context import CaptureContext, _bound_tags, _tag_values, _user
 from ._failure_log import FailureLogger
 from ._genai_attrs import (
+    DIALECT_LANGFUSE,
     LITELLM_SCOPE,
     SkipReason,
     litellm_route,
@@ -118,8 +119,13 @@ class MetergraphGenAIExporter(SpanExporter):
                 )
             return
 
+        langfuse = DIALECT_LANGFUSE in mapped.dialects
+        # A Langfuse span names a model, never the provider that served it, so
+        # an unplaced model is "unknown" rather than the telemetry vendor.
         provider = mapped.provider or (
-            mapped.dialects[0] if mapped.dialects else "gen_ai"
+            "unknown"
+            if langfuse
+            else (mapped.dialects[0] if mapped.dialects else "gen_ai")
         )
         context = span.context
         parent = span.parent
@@ -166,6 +172,7 @@ class MetergraphGenAIExporter(SpanExporter):
                 for value in (
                     attributes.get("metergraph.route"),
                     attributes.get("gen_ai.prompt.name"),
+                    mapped.route_name,
                 )
                 if isinstance(value, str) and value.strip()
             ),
@@ -173,14 +180,20 @@ class MetergraphGenAIExporter(SpanExporter):
         )
         if named_route is None and scope_name == LITELLM_SCOPE:
             named_route = litellm_route(span.name, attributes)
+        # A Langfuse trace name is the workflow the developer named; it groups
+        # calls far better than the generic operation.
+        derived_route = (mapped.trace_name if langfuse else None) or mapped.operation
         call = runtime.call_state(
             provider,
             mapped.operation,
             mapped.request,
             context=CaptureContext(
-                route=named_route or mapped.operation,
+                route=named_route or derived_route,
                 route_source="explicit" if named_route else "derived",
                 session_id=mapped.session_id,
+                tags=_bound_tags(_tag_values(mapped.tags)),
+                user_id=_user(mapped.user_id),
+                environment=mapped.environment,
                 trace_id=trace_id,
                 trace_name=mapped.trace_name or span.name,
                 parent_span_id=parent_span_id,
@@ -210,10 +223,15 @@ class MetergraphGenAIExporter(SpanExporter):
         error: OpenTelemetrySpanError | None = None
         if span.status.status_code is StatusCode.ERROR:
             error = OpenTelemetrySpanError(
-                span.status.description or "OpenTelemetry GenAI span failed"
+                span.status.description
+                or mapped.error_message
+                or "OpenTelemetry GenAI span failed"
             )
         elif mapped.error_message is not None:
             error = OpenTelemetrySpanError(mapped.error_message)
+        if error is not None and mapped.error_type and not attributes.get("error.type"):
+            # The row's error_type otherwise names this internal marker class.
+            attributes = {**attributes, "error.type": mapped.error_type}
         # finish() treats error=None exactly as an omitted error.
         call.finish(
             response,

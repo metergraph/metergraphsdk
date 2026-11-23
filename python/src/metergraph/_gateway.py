@@ -137,7 +137,15 @@ def evidence_for_mapped_cost(cost: Any, cost_source: Any) -> dict[str, Any]:
     amount = _billing_amount(cost)
     if amount is None:
         return {}
-    return {"reported_cost_usd": amount, "reported_cost_source": cost_source}
+    # ``cost_usd`` is the row's client-reported cost: hosted ingest keeps it
+    # as reported evidence beside its own catalog price and never bills it
+    # over the catalog. ``reported_cost_*`` alone is honored only for a
+    # qualified gateway, so without it the vendor's figure would be lost.
+    return {
+        "reported_cost_usd": amount,
+        "reported_cost_source": cost_source,
+        "cost_usd": amount,
+    }
 
 
 def gateway_evidence(

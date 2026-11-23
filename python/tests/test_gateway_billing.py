@@ -492,6 +492,7 @@ def test_evidence_openinference_float_cost_lands_without_gateway_key():
     assert evidence == {
         "reported_cost_usd": 0.0125,
         "reported_cost_source": _OI_SOURCE,
+        "cost_usd": 0.0125,
     }
     assert "gateway" not in evidence
 
@@ -501,6 +502,7 @@ def test_evidence_langfuse_float_cost_lands_without_gateway_key():
     assert evidence == {
         "reported_cost_usd": 0.0125,
         "reported_cost_source": _LF_SPAN_SOURCE,
+        "cost_usd": 0.0125,
     }
     assert "gateway" not in evidence
 
@@ -510,6 +512,7 @@ def test_evidence_langfuse_span_cost_source_is_fixed():
     assert evidence == {
         "reported_cost_usd": 0.5,
         "reported_cost_source": _LF_SPAN_SOURCE,
+        "cost_usd": 0.5,
     }
 
 
@@ -551,6 +554,7 @@ def test_evidence_contract_qualifies_every_endpoint(endpoint):
     assert evidence == {
         "reported_cost_usd": 0.25,
         "reported_cost_source": _LF_SPAN_SOURCE,
+        "cost_usd": 0.25,
     }
     assert "gateway" not in evidence
 

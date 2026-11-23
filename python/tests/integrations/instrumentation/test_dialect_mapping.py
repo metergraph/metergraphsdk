@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from metergraph._capture import _usage
 from metergraph._genai_attrs import (
     DIALECT_GENAI,
@@ -230,7 +232,9 @@ def test_langfuse_generation_parses_json_string_attributes():
     assert isinstance(mapped, MappedCall)
     assert mapped.dialects == ("langfuse",)
     assert mapped.model == "claude-opus-5"
-    assert mapped.provider is None
+    # Langfuse records no provider; the model name places it.
+    assert mapped.provider == "anthropic"
+    assert mapped.user_id == "synthetic-user"
     # Parsed structures, not raw JSON strings, so downstream scrub/redact can
     # walk the keys.
     assert mapped.request["messages"] == [
@@ -662,3 +666,236 @@ def test_a_denial_is_not_rescued_by_an_abstention():
     """The bug this guards: an abstaining gen_ai.* must not revive a span its
     own producer labelled a chain."""
     assert _vetoed({DIALECT_GENAI: None, "some-dialect": False}) is True
+
+
+# --- Langfuse dialect: usage conventions, provider, attribution ------------
+
+from metergraph._genai_attrs import (  # noqa: E402
+    error_type_from_message,
+    map_usage_details,
+    provider_from_model,
+)
+
+
+def _langfuse(**extra):
+    return {
+        "langfuse.observation.type": "generation",
+        "langfuse.observation.model.name": "gpt-4o-mini",
+        **extra,
+    }
+
+
+@pytest.mark.parametrize(
+    ("model", "provider"),
+    [
+        ("gpt-4o-mini", "openai"),
+        ("o4-mini", "openai"),
+        ("text-embedding-3-small", "openai"),
+        ("claude-3-5-haiku-20241022", "anthropic"),
+        ("us.anthropic.claude-3-5-haiku-20241022-v1:0", "bedrock"),
+        ("anthropic.claude-sonnet-4-v1:0", "bedrock"),
+        ("openai/gpt-4o", "openai"),
+        ("anthropic/claude-sonnet-4", "anthropic"),
+        ("mistral-large-latest", "mistral"),
+        ("gemini-2.5-flash", "google"),
+        ("grok-4", "xai"),
+        ("in-house-model-7", None),
+        ("someone/else", None),
+        ("", None),
+    ],
+)
+def test_provider_from_model_names(model, provider):
+    assert provider_from_model(model) == provider
+
+
+def test_langchain_ls_provider_beats_the_model_name():
+    mapped = map_span_attributes(
+        _langfuse(**{"langfuse.observation.metadata.ls_provider": '"azure"'})
+    )
+    assert mapped.provider == "azure"
+
+
+def test_openai_usage_object_passes_through_with_nested_cache_and_reasoning():
+    usage, dropped = map_usage_details(
+        {
+            "prompt_tokens": 700,
+            "completion_tokens": 30,
+            "total_tokens": 730,
+            "prompt_tokens_details": {"cached_tokens": 512},
+            "completion_tokens_details": {"reasoning_tokens": 4},
+        },
+        "openai",
+    )
+    assert dropped == ()
+    mapped = map_span_attributes(
+        _langfuse(**{"langfuse.observation.usage_details": json.dumps(usage)})
+    )
+    counts = _usage(mapped.response)
+    assert counts["input_tokens"] == 700
+    assert counts["cache_read_tokens"] == 512
+    assert counts["reasoning_tokens"] == 4
+
+
+def test_disjoint_buckets_restate_input_for_cache_inclusive_providers():
+    details = {"input": 900, "input_cached_tokens": 600, "output": 120, "output_reasoning_tokens": 40}
+    openai_usage, _ = map_usage_details(details, "openai")
+    anthropic_usage, _ = map_usage_details(details, "anthropic")
+    unknown_usage, _ = map_usage_details(details, None)
+
+    assert openai_usage["input_tokens"] == 1500
+    assert anthropic_usage["input_tokens"] == 900
+    assert unknown_usage["input_tokens"] == 900
+    for usage in (openai_usage, anthropic_usage, unknown_usage):
+        assert usage["output_tokens"] == 160
+        assert usage["cache_read_input_tokens"] == 600
+        assert usage["reasoning_tokens"] == 40
+
+
+def test_cache_write_ttl_buckets_sum_into_cache_write():
+    usage, dropped = map_usage_details(
+        {"input": 10, "input_cache_creation_5m": 3, "input_cache_creation_1h": 4, "output": 1},
+        "anthropic",
+    )
+    assert dropped == ()
+    mapped = map_span_attributes(
+        _langfuse(
+            **{
+                "langfuse.observation.model.name": "claude-sonnet-4",
+                "langfuse.observation.usage_details": json.dumps(
+                    {"input": 10, "input_cache_creation_5m": 3, "input_cache_creation_1h": 4, "output": 1}
+                ),
+            }
+        )
+    )
+    counts = _usage(mapped.response)
+    assert counts["cache_write_tokens"] == 7
+    assert counts["cache_write_5m_tokens"] == 3
+    assert counts["cache_write_1h_tokens"] == 4
+    assert usage["cache_creation_input_tokens"] == 7
+
+
+def test_langchain_disjoint_spellings_are_read():
+    mapped = map_span_attributes(
+        _langfuse(
+            **{
+                "langfuse.observation.usage_details": json.dumps(
+                    {"input": 188, "output": 30, "total": 730, "input_cache_read": 512, "output_reasoning": 0}
+                )
+            }
+        )
+    )
+    counts = _usage(mapped.response)
+    assert counts["input_tokens"] == 700
+    assert counts["cache_read_tokens"] == 512
+    assert mapped.dropped_usage_keys == ()
+
+
+def test_attribution_from_trace_and_observation_attributes():
+    mapped = map_span_attributes(
+        _langfuse(
+            **{
+                "user.id": "u-1",
+                "langfuse.environment": "staging",
+                "langfuse.release": "r-9",
+                "langfuse.version": "v-2",
+                "langfuse.trace.tags": ("beta", "alpha"),
+                "langfuse.trace.metadata.team": '"search"',
+                "langfuse.trace.metadata.shared": '"trace"',
+                "langfuse.observation.metadata.shared": '"observation"',
+                "langfuse.observation.metadata.limits": '{"max":3}',
+                "langfuse.observation.prompt.name": "triage",
+                "langfuse.observation.prompt.version": 4,
+            }
+        )
+    )
+    assert mapped.user_id == "u-1"
+    assert mapped.environment == "staging"
+    assert mapped.route_name == "triage"
+    assert mapped.tags == {
+        "langfuse.tag.alpha": "true",
+        "langfuse.tag.beta": "true",
+        "langfuse.release": "r-9",
+        "langfuse.version": "v-2",
+        "langfuse.metadata.team": "search",
+        "langfuse.metadata.shared": "observation",
+        "langfuse.metadata.limits": '{"max":3}',
+        "langfuse.prompt.name": "triage",
+        "langfuse.prompt.version": "4",
+    }
+
+
+@pytest.mark.parametrize(
+    "tags", ['["a","b"]', "a, b", ["b", "a"]],
+)
+def test_tags_accept_every_encoding_langfuse_accepts(tags):
+    mapped = map_span_attributes(_langfuse(**{"langfuse.tags": tags}))
+    assert {k for k in mapped.tags if k.startswith("langfuse.tag.")} == {
+        "langfuse.tag.a",
+        "langfuse.tag.b",
+    }
+
+
+def test_compat_spellings_and_whole_object_metadata():
+    mapped = map_span_attributes(
+        _langfuse(
+            **{
+                "langfuse.user.id": "u-compat",
+                "langfuse.session.id": "s-compat",
+                "deployment.environment.name": "prod",
+                "langfuse.metadata": '{"tier":"gold","n":2}',
+            }
+        )
+    )
+    assert mapped.user_id == "u-compat"
+    assert mapped.session_id == "s-compat"
+    assert mapped.environment == "prod"
+    assert mapped.tags["langfuse.metadata.tier"] == "gold"
+    assert mapped.tags["langfuse.metadata.n"] == "2"
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("RateLimitError: 429 from upstream", "RateLimitError"),
+        ("openai.APITimeoutError: timed out", "APITimeoutError"),
+        ("ContextWindowExceeded", "ContextWindowExceeded"),
+        ("the model refused", None),
+        (None, None),
+    ],
+)
+def test_error_type_from_status_message(message, expected):
+    assert error_type_from_message(message) == expected
+
+
+def test_embedding_and_custom_typed_model_calls_are_eligible():
+    embedding = map_span_attributes(
+        {
+            "langfuse.observation.type": "embedding",
+            "langfuse.observation.model.name": "text-embedding-3-small",
+            "langfuse.observation.usage_details": '{"input": 12}',
+        }
+    )
+    assert isinstance(embedding, MappedCall)
+    assert embedding.operation == "embeddings"
+
+    agent_call = map_span_attributes(
+        {
+            "langfuse.observation.type": "agent",
+            "langfuse.observation.model.name": "gpt-4o-mini",
+            "langfuse.observation.cost_details": '{"total": 0.01}',
+        }
+    )
+    assert isinstance(agent_call, MappedCall)
+    assert agent_call.cost == 0.01
+
+    structure = map_span_attributes(
+        {"langfuse.observation.type": "agent", "langfuse.observation.model.name": "gpt-4o-mini"}
+    )
+    assert structure is SkipReason.INELIGIBLE_KIND
+
+
+def test_cost_details_without_total_sums_its_parts():
+    mapped = map_span_attributes(
+        _langfuse(**{"langfuse.observation.cost_details": '{"input": 0.25, "output": 0.5}'})
+    )
+    assert mapped.cost == 0.75
