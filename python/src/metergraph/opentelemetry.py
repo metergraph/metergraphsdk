@@ -182,13 +182,14 @@ class MetergraphGenAIExporter(SpanExporter):
             response["cost"] = mapped.cost
             gateway = mapped.cost_source
 
+        # A Langfuse prompt name is a field of its own, never the route, so
+        # only an explicit metergraph.route overrides on Langfuse spans.
         named_route = next(
             (
                 value
                 for value in (
                     attributes.get("metergraph.route"),
-                    attributes.get("gen_ai.prompt.name"),
-                    mapped.route_name,
+                    None if langfuse else attributes.get("gen_ai.prompt.name"),
                 )
                 if isinstance(value, str) and value.strip()
             ),
@@ -196,9 +197,12 @@ class MetergraphGenAIExporter(SpanExporter):
         )
         if named_route is None and scope_name == LITELLM_SCOPE:
             named_route = litellm_route(span.name, attributes)
-        # A Langfuse trace name is the workflow the developer named; it groups
-        # calls far better than the generic operation.
-        derived_route = (mapped.trace_name if langfuse else None) or mapped.operation
+        # A Langfuse span routes by its trace name, else its observation name,
+        # the same rule as Langfuse imports, so every path keys one workflow
+        # the same way.
+        derived_route = (
+            (mapped.trace_name or span.name) if langfuse else None
+        ) or mapped.operation
         call = runtime.call_state(
             provider,
             mapped.operation,

@@ -4,6 +4,7 @@ import json
 import logging
 from datetime import datetime, timezone
 
+import pytest
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export import SpanExportResult
@@ -670,6 +671,43 @@ def test_langfuse_unplaced_model_is_unknown_provider(monkeypatch):
     MetergraphGenAIExporter().export([_span(attributes)])
 
     assert rows.rows[0]["provider"] == "unknown"
+    _capture.set_runtime(None)
+
+
+@pytest.mark.parametrize(
+    ("extra", "missing", "expected"),
+    [
+        # A prompt name is kept as tags, never the route.
+        (
+            {
+                "langfuse.observation.prompt.name": "triage",
+                "langfuse.observation.prompt.version": 3,
+                "gen_ai.prompt.name": "triage",
+            },
+            (),
+            ("synthetic-trace", "derived"),
+        ),
+        # No trace name: the observation (span) name.
+        ({}, ("langfuse.trace.name",), ("chat claude-opus-5", "derived")),
+        # An explicit caller route still wins.
+        ({"metergraph.route": "billing"}, (), ("billing", "explicit")),
+    ],
+)
+def test_langfuse_route_is_the_trace_name(monkeypatch, extra, missing, expected):
+    rows = Rows()
+    _capture.set_runtime(Runtime(rows, Options(app_root="")))
+    monkeypatch.setattr(metergraph, "init", lambda: None)
+    attributes = {**_langfuse_attributes(), **extra}
+    for key in missing:
+        attributes.pop(key)
+
+    MetergraphGenAIExporter().export([_span(attributes)])
+
+    row = rows.rows[0]
+    assert (row["route"], row["route_source"]) == expected
+    if "langfuse.observation.prompt.name" in extra:
+        assert row["tags"]["langfuse.prompt.name"] == "triage"
+        assert row["tags"]["langfuse.prompt.version"] == "3"
     _capture.set_runtime(None)
 
 

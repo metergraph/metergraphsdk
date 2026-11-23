@@ -101,8 +101,8 @@ Each row keeps what Langfuse recorded for the call:
 | `cost_details.total` (when you supply it) | `cost_usd` and `reported_cost_usd`, kept as reported evidence beside MeterGraph's own catalog price. Costs Langfuse infers on its server are not on the span. |
 | Completion start time | `ttft_ms` |
 | Level `ERROR` and status message | `error`, the message in the response record, and `error_type` from the message's leading exception name (for example `RateLimitError`) |
-| Trace name | `trace_name`, and the route |
-| Prompt name and version | The route (explicit), and tags `langfuse.prompt.name` / `langfuse.prompt.version` |
+| Trace name | `trace_name`, and the route (else the observation name; a `metergraph.route` attribute overrides) |
+| Prompt name and version | Tags `langfuse.prompt.name` / `langfuse.prompt.version` (never the route) |
 | User, session, environment | `user_id`, `session_id`, `environment` |
 | Tags | One tag per Langfuse tag: `langfuse.tag.<tag>` = `true` |
 | Release, version | Tags `langfuse.release`, `langfuse.version` |

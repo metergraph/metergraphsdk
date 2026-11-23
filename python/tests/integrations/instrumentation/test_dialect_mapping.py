@@ -811,7 +811,6 @@ def test_attribution_from_trace_and_observation_attributes():
     )
     assert mapped.user_id == "u-1"
     assert mapped.environment == "staging"
-    assert mapped.route_name == "triage"
     assert mapped.tags == {
         "langfuse.tag.alpha": "true",
         "langfuse.tag.beta": "true",

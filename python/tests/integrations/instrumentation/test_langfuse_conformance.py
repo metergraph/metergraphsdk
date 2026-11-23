@@ -285,19 +285,18 @@ def test_trace_attribution_lands_on_the_row(replay, key):
 
 
 @pytest.mark.parametrize("key", _cost_bearing_keys())
-def test_route_is_the_prompt_or_the_trace_never_the_operation(replay, key):
+def test_route_is_the_trace_name_never_the_prompt_or_operation(replay, key):
+    """Route is the Langfuse trace name on every path; a prompt stays a tag."""
     _, rows, _ = replay
     row = rows[key]
+    assert row["route"] == row["trace_name"]
+    assert row["route_source"] == "derived"
+    assert row["route"] != "inference"
     prompt = MANIFEST["observations"][key].get("prompt")
     if prompt:
-        assert row["route"] == prompt["name"]
-        assert row["route_source"] == "explicit"
+        assert row["route"] != prompt["name"]
         assert row["tags"]["langfuse.prompt.name"] == prompt["name"]
         assert row["tags"]["langfuse.prompt.version"] == str(prompt["version"])
-    else:
-        assert row["route"] == row["trace_name"]
-        assert row["route_source"] == "derived"
-    assert row["route"] != "inference"
 
 
 def test_model_parameters_are_kept_on_the_request(replay):

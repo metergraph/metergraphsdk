@@ -71,8 +71,6 @@ class MappedCall:
     user_id: str | None = None
     environment: str | None = None
     tags: Mapping[str, str] = field(default_factory=dict)
-    # An explicit workload name the dialect recorded (a Langfuse prompt name).
-    route_name: str | None = None
     error_type: str | None = None
 
 
@@ -364,7 +362,6 @@ class _Fields:
     user_id: str | None = None
     environment: str | None = None
     tags: dict[str, str] = field(default_factory=dict)
-    route_name: str | None = None
     error_type: str | None = None
 
 
@@ -728,7 +725,6 @@ def _extract_langfuse(attributes: Mapping[str, Any]) -> _Fields:
     if prompt_version is None:
         prompt_version = attributes.get("langfuse.prompt.version")
     if prompt_name is not None:
-        fields.route_name = prompt_name
         tags["langfuse.prompt.name"] = prompt_name
         version_text = _attribute_text(prompt_version)
         if version_text is not None:
@@ -1272,7 +1268,6 @@ def map_span_attributes(
             for contribution in reversed(contributions)
             for key, value in contribution.tags.items()
         },
-        route_name=_first_value(contributions, "route_name"),
         error_type=_first_value(contributions, "error_type"),
     )
 
