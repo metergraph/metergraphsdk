@@ -394,22 +394,31 @@ tracer_provider.add_span_processor(
 )
 ```
 
-For the Langfuse Python SDK (v3/v4):
+For the Langfuse Python SDK (v3, v4 or v5), build the provider and hand it to
+Langfuse before anything else creates a client (the client is a process-wide
+singleton bound to its first provider). Langfuse adds its own exporter to it,
+so its tracing is unchanged:
 
 ```python
-from opentelemetry import trace
+from langfuse import Langfuse
+from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from metergraph.opentelemetry import MetergraphGenAIExporter
 
-trace.get_tracer_provider().add_span_processor(
-    BatchSpanProcessor(MetergraphGenAIExporter())
-)
+provider = TracerProvider()
+provider.add_span_processor(BatchSpanProcessor(MetergraphGenAIExporter()))
+langfuse = Langfuse(tracer_provider=provider)
 ```
 
-Verify the attachment against your installed Langfuse SDK version — whether
-Langfuse uses the global provider has changed across releases, and the client
-is a process-wide singleton, so the exporter must be on the provider the first
-`Langfuse(...)` was built with. Make one traced call and confirm a row arrives.
+`@observe`, `langfuse.openai` and the LangChain `CallbackHandler` then
+capture with no further change. Rows keep the provider (resolved from the
+model name, since Langfuse records none), cache-read, cache-write and
+reasoning tokens, a cost you supplied, time to first token, the error
+message, and the trace's user, session, environment, tags, release, version,
+metadata and prompt. The
+[Langfuse example](examples/integrations/telemetry/langfuse/python/) lists
+every field, and shows the TypeScript setup: Langfuse JS v4 and newer adds a
+second OTLP exporter pointed at MeterGraph's `/v1/traces` endpoint.
 
 For the LangSmith SDK, set the tracer provider before the first traced call and
 turn on OTel export -- LangSmith's default tracing mode posts runs to its own
@@ -450,10 +459,12 @@ SDK publishes everything under the single scope `langfuse-sdk`. When nothing arr
 examples: [`examples/integrations/telemetry/phoenix/python/`](examples/integrations/telemetry/phoenix/python/),
 [`examples/integrations/telemetry/langfuse/python/`](examples/integrations/telemetry/langfuse/python/).
 
-Vendor-reported cost lands on rows as `reported_cost_usd` with a fixed
-`reported_cost_source`; the SDK never computes cost itself. Note that Phoenix
-computes cost server-side — its instrumentors do not put `llm.cost.total` on
-spans — so in practice this evidence arrives from Langfuse.
+Vendor-reported cost lands on rows as `cost_usd` and `reported_cost_usd`, with
+a fixed `reported_cost_source`; MeterGraph keeps it as reported evidence beside
+its own catalog price, and the SDK never computes cost itself. Note that Phoenix
+computes cost server-side (its instrumentors do not put `llm.cost.total` on
+spans), so in practice this evidence arrives from Langfuse, and only for costs
+the application supplied: Langfuse infers the rest on its own server.
 
 ### Braintrust and other OTLP backends
 

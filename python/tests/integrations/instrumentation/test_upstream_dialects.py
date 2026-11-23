@@ -9,9 +9,9 @@ existed in any shipped SDK survived review.
 
 This module inverts the direction: it drives the real libraries, reads back
 whatever attributes that installed version actually produced, and asserts on
-the MappedCall they yield. It is meaningful only when its dependencies float,
-so it runs from the scheduled `upstream-dialects` workflow (unpinned, weekly),
-not as a required pull-request check.
+the MappedCall they yield. The `upstream-dialects` workflow runs it against
+pinned upstream versions on every pull request (Langfuse v3, v4 and v5), and
+nightly against the newest releases to catch drift.
 
 No credentials and no network: the OpenAI call goes through an httpx
 MockTransport, and the Langfuse and LangSmith clients are given dummy keys and
@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import contextlib
 import datetime
+import inspect
 import socket
 from typing import Iterator, Sequence
 
@@ -170,13 +171,18 @@ def langfuse_spans():
 
     memory, provider = _memory_provider()
     with _blocked_network() as outbound:
-        client = Langfuse(
-            public_key="pk-not-a-real-key",
-            secret_key="sk-not-a-real-key",
-            tracer_provider=provider,
-            tracing_enabled=True,
-            span_exporter=_LocalSpanExporter(),
-        )
+        options = {
+            "public_key": "pk-not-a-real-key",
+            "secret_key": "sk-not-a-real-key",
+            # Loopback only: v3 has no span_exporter hook and exports to its
+            # host, which here refuses the connection without leaving the box.
+            "host": "http://127.0.0.1:9",
+            "tracer_provider": provider,
+            "tracing_enabled": True,
+        }
+        if "span_exporter" in inspect.signature(Langfuse.__init__).parameters:
+            options["span_exporter"] = _LocalSpanExporter()
+        client = Langfuse(**options)
         # session/user/trace_name reach spans through baggage, not a setter.
         with propagate_attributes(
             session_id="sess-1", user_id="u-1", trace_name="my-trace"

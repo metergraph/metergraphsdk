@@ -32,15 +32,15 @@ def test_langfuse_example_captures_generation_span(monkeypatch):
 
     assert len(rows.rows) == 1
     row = rows.rows[0]
-    assert row["provider"] == "langfuse"
+    # Langfuse records no provider; the model name places it.
+    assert row["provider"] == "anthropic"
     assert row["model"] == "claude-opus-5"
     assert row["input_tokens"] == 11
     assert row["output_tokens"] == 4
     assert row["session_id"] == "sess-1"
-    # "user.id" is on the span (real Langfuse spans carry it), but nothing
-    # reads it: the capture row model has no user field, so it is dropped.
-    assert "user_id" not in row
+    assert row["user_id"] == "u-1"
     assert row["trace_name"] == "synthetic-trace"
+    assert row["route"] == "synthetic-trace"
     assert json.loads(row["response_text"])["content"] == "Synthetic reply"
     # The non-generation observation is skipped, not captured.
     assert exporter.skipped["ineligible-kind"] == 1

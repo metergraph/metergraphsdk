@@ -1,34 +1,78 @@
-# Drift watch for the telemetry dialects the GenAI exporter maps. Drives the
-# real upstream libraries and asserts on the spans they actually produce, so a
-# rename surfaces here instead of as silent capture loss in the field.
+# Upstream telemetry dialects the GenAI exporter maps. Drives the real
+# upstream libraries offline (mock OpenAI transport, Langfuse exporting
+# nowhere) and asserts on the spans they actually produce.
 #
-# Deliberately NOT part of ci.yml and NOT a required check: the dependencies
-# are unpinned so the job can see drift, which means an upstream release can
-# turn it red with no change on our side. See the rationale in
-# python/tests/integrations/instrumentation/test_upstream_dialects.py.
+# Two kinds of job:
+#
+# - `pinned` runs on every pull request, on main and nightly against explicit
+#   upstream versions, so it is deterministic and can be a required check. It
+#   covers Langfuse Python v3, v4 and v5: manual generations, @observe with
+#   langfuse.openai, and the LangChain CallbackHandler, each replayed through
+#   the exporter and compared with what Langfuse itself recorded
+#   (python/tests/fixtures/langfuse/).
+# - `drift-watch` runs nightly against the newest releases, unpinned, so an
+#   upstream rename surfaces here first. It is informational: an upstream
+#   release can turn it red with no change on our side. When it does, add the
+#   new version to the pinned matrix and fix the mapper.
 name: upstream-dialects
 
 on:
+  pull_request:
+  push:
+    branches: [main]
   schedule:
-    # Mondays, 07:00 UTC.
-    - cron: "0 7 * * 1"
+    # Nightly, 07:00 UTC.
+    - cron: "0 7 * * *"
   workflow_dispatch:
 
+# Read-only: the jobs check out code and run tests, nothing more.
+permissions:
+  contents: read
+
 jobs:
-  upstream-dialects:
+  pinned:
+    name: pinned (langfuse ${{ matrix.langfuse }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        langfuse: ["3.15.0", "4.18.0", "5.2.0"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: >
+          pip install -e "python[otel]" pytest
+          "langfuse==${{ matrix.langfuse }}"
+          "openai==3.57.0" "httpx==0.28.1"
+          "langchain==1.5.2" "langchain-core==1.8.4" "langchain-openai==1.8.5"
+          "openinference-instrumentation-openai==0.1.77" "langsmith==0.16.0"
+      - name: Record the versions this run tested
+        run: pip list | grep -Ei "openinference|langfuse|langsmith|langchain|^openai|opentelemetry-sdk"
+      # Separate processes: the Langfuse client is a process-wide registry, and
+      # a second client in one process sends @observe to a disabled client.
+      - name: Langfuse conformance (fixture and live capture)
+        run: pytest python/tests/integrations/instrumentation/test_langfuse_conformance.py -q -rs
+      - name: Upstream SDKs still emit the attributes the mapper reads
+        run: pytest python/tests/integrations/instrumentation/test_upstream_dialects.py -q -rs
+
+  drift-watch:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      # Unpinned on purpose: pinning these would defeat the whole job.
+      # Unpinned on purpose: this job exists to see the newest releases.
       - run: >
           pip install -e "python[otel]" pytest
           openinference-instrumentation-openai openai langfuse langsmith httpx
-      - name: Record the versions this run actually tested
-        run: pip list | grep -Ei "openinference|langfuse|langsmith|^openai|opentelemetry-sdk"
+          langchain langchain-openai
+      - name: Record the versions this run tested
+        run: pip list | grep -Ei "openinference|langfuse|langsmith|langchain|^openai|opentelemetry-sdk"
+      - name: Langfuse conformance against the newest Langfuse
+        run: pytest python/tests/integrations/instrumentation/test_langfuse_conformance.py -q -rs
       - name: Upstream SDKs still emit the attributes the mapper reads
-        run: >
-          pytest python/tests/integrations/instrumentation/test_upstream_dialects.py
-          -q -rs
+        run: pytest python/tests/integrations/instrumentation/test_upstream_dialects.py -q -rs

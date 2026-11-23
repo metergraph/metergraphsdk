@@ -1,0 +1,663 @@
+{
+ "schema": "metergraph-langfuse-otel-spans/1",
+ "source": "Langfuse Python SDK OpenTelemetry spans for the conformance fixture flows, captured offline",
+ "versions": {
+  "langfuse": "5.2.0",
+  "opentelemetry-sdk": "1.45.2",
+  "openai": "3.57.0",
+  "langchain-openai": "1.8.5"
+ },
+ "spans": [
+  {
+   "name": "agent-root",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "9ada893a7bf38e94",
+   "parent_span_id": null,
+   "start_time_unix_nano": 1767225600000000000,
+   "end_time_unix_nano": 1767225600740327000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.internal.is_app_root": true,
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.input": "{\"q\": \"hi\"}",
+    "langfuse.observation.type": "agent",
+    "langfuse.observation.output": "{\"a\": \"done\"}"
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "plan-chain",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "5a4ca374fc8b677c",
+   "parent_span_id": "9ada893a7bf38e94",
+   "start_time_unix_nano": 1767225600000209000,
+   "end_time_unix_nano": 1767225600740286000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.observation.type": "chain",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22"
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "kb-retriever",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "c28f4a52a1710c8a",
+   "parent_span_id": "5a4ca374fc8b677c",
+   "start_time_unix_nano": 1767225600000273000,
+   "end_time_unix_nano": 1767225600000409000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.observation.type": "retriever",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22"
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "embed-query",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "6208e6ca5f5dbc0b",
+   "parent_span_id": "c28f4a52a1710c8a",
+   "start_time_unix_nano": 1767225600000326000,
+   "end_time_unix_nano": 1767225600000385000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.observation.type": "embedding",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.input": "hi",
+    "langfuse.observation.model.name": "text-embedding-3-small",
+    "langfuse.observation.usage_details": "{\"input\": 1200}",
+    "langfuse.observation.cost_details": "{\"input\": 2.4e-05, \"total\": 2.4e-05}"
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "lookup-tool",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "410861d87e120756",
+   "parent_span_id": "5a4ca374fc8b677c",
+   "start_time_unix_nano": 1767225600000430000,
+   "end_time_unix_nano": 1767225600000475000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.observation.type": "tool",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.input": "{\"id\": 7}",
+    "langfuse.observation.output": "{\"ok\": true}"
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "llm-step",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "ecdd27e3a6562d8c",
+   "parent_span_id": "5a4ca374fc8b677c",
+   "start_time_unix_nano": 1767225600000491000,
+   "end_time_unix_nano": 1767225600740277000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.observation.type": "span",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22"
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "gen-openai_cached_reasoning",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "dc048ca0e73bf552",
+   "parent_span_id": "ecdd27e3a6562d8c",
+   "start_time_unix_nano": 1767225600000532000,
+   "end_time_unix_nano": 1767225600106003000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.input": "[{\"role\": \"system\", \"content\": \"You are terse.\"}, {\"role\": \"user\", \"content\": \"case openai_cached_reasoning\"}]",
+    "langfuse.observation.model.name": "gpt-4o-mini",
+    "langfuse.observation.prompt.name": "mg-conformance-prompt",
+    "langfuse.observation.prompt.version": 1,
+    "langfuse.observation.model.parameters": "{\"temperature\": 0.2, \"max_tokens\": 512}",
+    "langfuse.observation.metadata.step": "\"openai_cached_reasoning\"",
+    "langfuse.observation.metadata.nested": "{\"region\":\"us-west-2\",\"attempt\":1}",
+    "langfuse.observation.type": "generation",
+    "langfuse.observation.output": "ok",
+    "langfuse.observation.usage_details": "{\"input\": 900, \"input_cached_tokens\": 600, \"output\": 120, \"output_reasoning_tokens\": 40}",
+    "langfuse.observation.completion_start_time": "\"2026-01-01T00:00:00.051377+00:00\""
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "gen-anthropic_cache_rw",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "57ab503307de66bc",
+   "parent_span_id": "ecdd27e3a6562d8c",
+   "start_time_unix_nano": 1767225600106152000,
+   "end_time_unix_nano": 1767225600213538000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.input": "[{\"role\": \"system\", \"content\": \"You are terse.\"}, {\"role\": \"user\", \"content\": \"case anthropic_cache_rw\"}]",
+    "langfuse.observation.model.name": "claude-3-5-haiku-20241022",
+    "langfuse.observation.model.parameters": "{\"temperature\": 0.2, \"max_tokens\": 512}",
+    "langfuse.observation.metadata.step": "\"anthropic_cache_rw\"",
+    "langfuse.observation.metadata.nested": "{\"region\":\"us-west-2\",\"attempt\":1}",
+    "langfuse.observation.type": "generation",
+    "langfuse.observation.output": "ok",
+    "langfuse.observation.usage_details": "{\"input\": 200, \"cache_read_input_tokens\": 800, \"cache_creation_input_tokens\": 300, \"output\": 90}",
+    "langfuse.observation.cost_details": "{\"input\": 0.00016, \"cache_read_input_tokens\": 6.4e-05, \"cache_creation_input_tokens\": 0.0003, \"output\": 0.00036, \"total\": 0.000884}",
+    "langfuse.observation.completion_start_time": "\"2026-01-01T00:00:00.161207+00:00\""
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "gen-o4_mini",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "ab08fe3566db09c1",
+   "parent_span_id": "ecdd27e3a6562d8c",
+   "start_time_unix_nano": 1767225600213634000,
+   "end_time_unix_nano": 1767225600317453000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.input": "[{\"role\": \"system\", \"content\": \"You are terse.\"}, {\"role\": \"user\", \"content\": \"case o4_mini\"}]",
+    "langfuse.observation.model.name": "o4-mini",
+    "langfuse.observation.model.parameters": "{\"temperature\": 0.2, \"max_tokens\": 512}",
+    "langfuse.observation.metadata.step": "\"o4_mini\"",
+    "langfuse.observation.metadata.nested": "{\"region\":\"us-west-2\",\"attempt\":1}",
+    "langfuse.observation.type": "generation",
+    "langfuse.observation.output": "ok",
+    "langfuse.observation.usage_details": "{\"input\": 500, \"output\": 300, \"output_reasoning_tokens\": 200}",
+    "langfuse.observation.completion_start_time": "\"2026-01-01T00:00:00.264969+00:00\""
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "gen-bedrock_claude",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "9af3c24caed65a65",
+   "parent_span_id": "ecdd27e3a6562d8c",
+   "start_time_unix_nano": 1767225600317535000,
+   "end_time_unix_nano": 1767225600425039000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.input": "[{\"role\": \"system\", \"content\": \"You are terse.\"}, {\"role\": \"user\", \"content\": \"case bedrock_claude\"}]",
+    "langfuse.observation.model.name": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+    "langfuse.observation.model.parameters": "{\"temperature\": 0.2, \"max_tokens\": 512}",
+    "langfuse.observation.metadata.step": "\"bedrock_claude\"",
+    "langfuse.observation.metadata.nested": "{\"region\":\"us-west-2\",\"attempt\":1}",
+    "langfuse.observation.type": "generation",
+    "langfuse.observation.output": "ok",
+    "langfuse.observation.usage_details": "{\"input\": 400, \"output\": 50}",
+    "langfuse.observation.completion_start_time": "\"2026-01-01T00:00:00.370720+00:00\""
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "gen-gateway_openai",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "ecbc7c6f7dc3495b",
+   "parent_span_id": "ecdd27e3a6562d8c",
+   "start_time_unix_nano": 1767225600425146000,
+   "end_time_unix_nano": 1767225600528682000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.input": "[{\"role\": \"system\", \"content\": \"You are terse.\"}, {\"role\": \"user\", \"content\": \"case gateway_openai\"}]",
+    "langfuse.observation.model.name": "openai/gpt-4o",
+    "langfuse.observation.model.parameters": "{\"temperature\": 0.2, \"max_tokens\": 512}",
+    "langfuse.observation.metadata.step": "\"gateway_openai\"",
+    "langfuse.observation.metadata.nested": "{\"region\":\"us-west-2\",\"attempt\":1}",
+    "langfuse.observation.type": "generation",
+    "langfuse.observation.output": "ok",
+    "langfuse.observation.usage_details": "{\"input\": 300, \"output\": 60}",
+    "langfuse.observation.cost_details": "{\"total\": 0.00135}",
+    "langfuse.observation.completion_start_time": "\"2026-01-01T00:00:00.476440+00:00\""
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "gen-unknown_mistral",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "0753fb763b4129fc",
+   "parent_span_id": "ecdd27e3a6562d8c",
+   "start_time_unix_nano": 1767225600528771000,
+   "end_time_unix_nano": 1767225600637403000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.input": "[{\"role\": \"system\", \"content\": \"You are terse.\"}, {\"role\": \"user\", \"content\": \"case unknown_mistral\"}]",
+    "langfuse.observation.model.name": "mistral-large-latest",
+    "langfuse.observation.model.parameters": "{\"temperature\": 0.2, \"max_tokens\": 512}",
+    "langfuse.observation.metadata.step": "\"unknown_mistral\"",
+    "langfuse.observation.metadata.nested": "{\"region\":\"us-west-2\",\"attempt\":1}",
+    "langfuse.observation.type": "generation",
+    "langfuse.observation.output": "ok",
+    "langfuse.observation.usage_details": "{\"input\": 250, \"output\": 40}",
+    "langfuse.observation.cost_details": "{\"input\": 0.0005, \"output\": 0.00024, \"total\": 0.00074}",
+    "langfuse.observation.completion_start_time": "\"2026-01-01T00:00:00.583751+00:00\""
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "gen-error_call",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "9bd1f1c343830252d32351fea2e5ee55",
+   "span_id": "c12336376252bdbb",
+   "parent_span_id": "ecdd27e3a6562d8c",
+   "start_time_unix_nano": 1767225600637489000,
+   "end_time_unix_nano": 1767225600740245000,
+   "status": {
+    "code": "ERROR",
+    "description": "RateLimitError: 429 from upstream"
+   },
+   "attributes": {
+    "user.id": "user-conf-1",
+    "session.id": "sess-mg-conformance-fixture",
+    "langfuse.trace.metadata.feature": "\"support-triage\"",
+    "langfuse.trace.metadata.customer_tier": "\"gold\"",
+    "langfuse.version": "app-v1.4.2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "prod"
+    ],
+    "langfuse.trace.name": "conformance-workflow",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.level": "ERROR",
+    "langfuse.observation.status_message": "RateLimitError: 429 from upstream",
+    "langfuse.observation.input": "[{\"role\": \"system\", \"content\": \"You are terse.\"}, {\"role\": \"user\", \"content\": \"case error_call\"}]",
+    "langfuse.observation.model.name": "gpt-4o-mini",
+    "langfuse.observation.model.parameters": "{\"temperature\": 0.2, \"max_tokens\": 512}",
+    "langfuse.observation.metadata.step": "\"error_call\"",
+    "langfuse.observation.metadata.nested": "{\"region\":\"us-west-2\",\"attempt\":1}",
+    "langfuse.observation.type": "generation",
+    "langfuse.observation.usage_details": "{\"input\": 100, \"output\": 0}",
+    "langfuse.observation.completion_start_time": "\"2026-01-01T00:00:00.687943+00:00\""
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "conformance-langchain",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "79ddd3701264ae521bad393ccddafc86",
+   "span_id": "66ac8631a128827d",
+   "parent_span_id": null,
+   "start_time_unix_nano": 1767225602865297000,
+   "end_time_unix_nano": 1767225602900005000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "langchain"
+    ],
+    "langfuse.trace.name": "conformance-langchain",
+    "langfuse.internal.is_app_root": true,
+    "langfuse.observation.type": "chain",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22"
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "ChatOpenAI",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "79ddd3701264ae521bad393ccddafc86",
+   "span_id": "3b22c214623a3edb",
+   "parent_span_id": "66ac8631a128827d",
+   "start_time_unix_nano": 1767225602872958000,
+   "end_time_unix_nano": 1767225602899834000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "langchain"
+    ],
+    "langfuse.trace.name": "conformance-langchain",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.input": "[{\"role\": \"user\", \"content\": \"hello\"}]",
+    "langfuse.observation.model.parameters": "{}",
+    "langfuse.observation.metadata.ls_provider": "\"openai\"",
+    "langfuse.observation.metadata.ls_model_name": "\"gpt-4o-mini\"",
+    "langfuse.observation.metadata.ls_model_type": "\"chat\"",
+    "langfuse.observation.metadata.ls_integration": "\"langchain_chat_model\"",
+    "langfuse.observation.metadata.lc_versions": "{\"langchain-core\":\"1.8.4\",\"langchain-openai\":\"1.8.5\"}",
+    "langfuse.observation.metadata.is_langchain_root": "true",
+    "langfuse.observation.type": "generation",
+    "langfuse.observation.output": "{\"role\": \"assistant\", \"content\": \"mocked\", \"additional_kwargs\": {\"refusal\": null}}",
+    "langfuse.observation.model.name": "gpt-4o-mini-2024-07-18",
+    "langfuse.observation.usage_details": "{\"input\": 188, \"output\": 30, \"total\": 730, \"input_cache_read\": 512, \"output_reasoning\": 0}"
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "observe-decorated",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "0cc31d1ab96e50a446e9fdb8a0c82a5d",
+   "span_id": "f2559ecd8c503b48",
+   "parent_span_id": null,
+   "start_time_unix_nano": 1767225602900384000,
+   "end_time_unix_nano": 1767225603023817000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "observe"
+    ],
+    "langfuse.trace.name": "conformance-observe",
+    "langfuse.internal.is_app_root": true,
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.input": "{\"args\": [], \"kwargs\": {}}",
+    "langfuse.observation.type": "span",
+    "langfuse.observation.output": "ok"
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  },
+  {
+   "name": "OpenAI-generation",
+   "scope": "langfuse-sdk",
+   "kind": "INTERNAL",
+   "trace_id": "0cc31d1ab96e50a446e9fdb8a0c82a5d",
+   "span_id": "bd7516ac1d1dd3f4",
+   "parent_span_id": "f2559ecd8c503b48",
+   "start_time_unix_nano": 1767225603022974000,
+   "end_time_unix_nano": 1767225603023769000,
+   "status": {
+    "code": "UNSET",
+    "description": null
+   },
+   "attributes": {
+    "user.id": "user-conf-2",
+    "langfuse.trace.tags": [
+     "mg-conformance-fixture",
+     "observe"
+    ],
+    "langfuse.trace.name": "conformance-observe",
+    "langfuse.environment": "conformance",
+    "langfuse.release": "rel-2026.11.22",
+    "langfuse.observation.input": "[{\"role\": \"user\", \"content\": \"wrapped\"}]",
+    "langfuse.observation.model.parameters": "{\"temperature\": 1, \"max_tokens\": \"Infinity\", \"top_p\": 1, \"frequency_penalty\": 0, \"presence_penalty\": 0}",
+    "langfuse.observation.type": "generation",
+    "langfuse.observation.output": "{\"role\": \"assistant\", \"content\": \"mocked\"}",
+    "langfuse.observation.model.name": "gpt-4o-mini-2024-07-18",
+    "langfuse.observation.usage_details": "{\"completion_tokens\": 30, \"prompt_tokens\": 700, \"total_tokens\": 730, \"completion_tokens_details\": {\"reasoning_tokens\": 0}, \"prompt_tokens_details\": {\"cached_tokens\": 512}}"
+   },
+   "resource": {
+    "telemetry.sdk.language": "python",
+    "telemetry.sdk.name": "opentelemetry",
+    "service.name": "unknown_service:python"
+   }
+  }
+ ]
+}

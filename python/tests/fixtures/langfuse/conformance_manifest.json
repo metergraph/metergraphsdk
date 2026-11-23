@@ -1,0 +1,740 @@
+{
+  "dataset": {
+    "items": [
+      {
+        "expected_output": {
+          "label": "billing"
+        },
+        "id": "mg-conformance-item-0",
+        "input": {
+          "text": "item 0"
+        }
+      },
+      {
+        "expected_output": {
+          "label": "billing"
+        },
+        "id": "mg-conformance-item-1",
+        "input": {
+          "text": "item 1"
+        }
+      },
+      {
+        "expected_output": {
+          "label": "billing"
+        },
+        "id": "mg-conformance-item-2",
+        "input": {
+          "text": "item 2"
+        }
+      }
+    ],
+    "name": "mg-conformance-dataset"
+  },
+  "double_count_case": false,
+  "environment": "conformance",
+  "experiment": {
+    "dataset_run_id": "e7b1c174f5edb86a",
+    "items": 3,
+    "name": "mg-conformance-experiment",
+    "run_name": "mg-conformance-experiment-mg-conformance-fixture"
+  },
+  "langfuse_readback": {
+    "agent_root": {
+      "latency": 2.848,
+      "timeToFirstToken": null,
+      "totalCost": null,
+      "usageDetails": {}
+    },
+    "anthropic_cache_rw": {
+      "latency": 0.406,
+      "timeToFirstToken": 0.154,
+      "totalCost": 0.000884,
+      "usageDetails": {
+        "cache_creation_input_tokens": 300,
+        "cache_read_input_tokens": 800,
+        "input": 200,
+        "output": 90,
+        "total": 1390
+      }
+    },
+    "bedrock_claude": {
+      "latency": 0.407,
+      "timeToFirstToken": 0.152,
+      "totalCost": 0.00052,
+      "usageDetails": {
+        "input": 400,
+        "output": 50,
+        "total": 450
+      }
+    },
+    "delete_me": {
+      "latency": null,
+      "timeToFirstToken": null,
+      "totalCost": 4.5e-06,
+      "usageDetails": {
+        "input": 10,
+        "output": 5,
+        "total": 15
+      }
+    },
+    "embedding": {
+      "latency": null,
+      "timeToFirstToken": null,
+      "totalCost": 2.4e-05,
+      "usageDetails": {
+        "input": 1200,
+        "total": 1200
+      }
+    },
+    "error_call": {
+      "latency": 0.401,
+      "timeToFirstToken": 0.151,
+      "totalCost": 1.5e-05,
+      "usageDetails": {
+        "input": 100,
+        "output": 0,
+        "total": 100
+      }
+    },
+    "gateway_openai": {
+      "latency": 0.409,
+      "timeToFirstToken": 0.156,
+      "totalCost": 0.00135,
+      "usageDetails": {
+        "input": 300,
+        "output": 60,
+        "total": 360
+      }
+    },
+    "kb_retriever": {
+      "latency": null,
+      "timeToFirstToken": null,
+      "totalCost": null,
+      "usageDetails": {}
+    },
+    "langchain_chain": {
+      "latency": 0.02,
+      "timeToFirstToken": null,
+      "totalCost": null,
+      "usageDetails": {}
+    },
+    "langchain_generation": {
+      "latency": 0.014,
+      "timeToFirstToken": null,
+      "totalCost": 8.46e-05,
+      "usageDetails": {
+        "input": 188,
+        "input_cache_read": 512,
+        "output": 30,
+        "output_reasoning": 0,
+        "total": 730
+      }
+    },
+    "llm_step": {
+      "latency": 2.847,
+      "timeToFirstToken": null,
+      "totalCost": null,
+      "usageDetails": {}
+    },
+    "lookup_tool": {
+      "latency": null,
+      "timeToFirstToken": null,
+      "totalCost": null,
+      "usageDetails": {}
+    },
+    "o4_mini": {
+      "latency": 0.405,
+      "timeToFirstToken": 0.151,
+      "totalCost": 0.00275,
+      "usageDetails": {
+        "input": 500,
+        "output": 300,
+        "output_reasoning_tokens": 200,
+        "total": 1000
+      }
+    },
+    "observe_generation": {
+      "latency": 0.001,
+      "timeToFirstToken": null,
+      "totalCost": 8.46e-05,
+      "usageDetails": {
+        "input": 188,
+        "input_cached_tokens": 512,
+        "output": 30,
+        "output_reasoning_tokens": 0,
+        "total": 730
+      }
+    },
+    "observe_span": {
+      "latency": 0.212,
+      "timeToFirstToken": null,
+      "totalCost": null,
+      "usageDetails": {}
+    },
+    "openai_cached_reasoning": {
+      "latency": 0.409,
+      "timeToFirstToken": 0.154,
+      "totalCost": 0.000252,
+      "usageDetails": {
+        "input": 900,
+        "input_cached_tokens": 600,
+        "output": 120,
+        "output_reasoning_tokens": 40,
+        "total": 1660
+      }
+    },
+    "plan_chain": {
+      "latency": 2.847,
+      "timeToFirstToken": null,
+      "totalCost": null,
+      "usageDetails": {}
+    },
+    "unknown_mistral": {
+      "latency": 0.407,
+      "timeToFirstToken": 0.152,
+      "totalCost": 0.00074,
+      "usageDetails": {
+        "input": 250,
+        "output": 40,
+        "total": 290
+      }
+    }
+  },
+  "observations": {
+    "agent_root": {
+      "depth": 0,
+      "id": "c4a8ba5bc88db86b",
+      "name": "agent-root",
+      "parent": null,
+      "trace": "main",
+      "type": "AGENT"
+    },
+    "anthropic_cache_rw": {
+      "cost_bearing": true,
+      "cost_supplied": {
+        "cache_creation_input_tokens": 0.0003,
+        "cache_read_input_tokens": 6.4e-05,
+        "input": 0.00016,
+        "output": 0.00036,
+        "total": 0.000884
+      },
+      "depth": 3,
+      "expected_providers": [
+        "anthropic"
+      ],
+      "id": "865405e64b09ea88",
+      "latency_ms_min": 400,
+      "level": "DEFAULT",
+      "metadata": {
+        "nested": {
+          "attempt": 1,
+          "region": "us-west-2"
+        },
+        "step": "anthropic_cache_rw"
+      },
+      "model": "claude-3-5-haiku-20241022",
+      "model_parameters": {
+        "max_tokens": 512,
+        "temperature": 0.2
+      },
+      "name": "gen-anthropic_cache_rw",
+      "parent": "llm_step",
+      "prompt": null,
+      "status_message": null,
+      "style": "manual",
+      "trace": "main",
+      "ttft_ms_min": 150,
+      "type": "GENERATION",
+      "usage": {
+        "cache_creation_input_tokens": 300,
+        "cache_read_input_tokens": 800,
+        "input": 200,
+        "output": 90
+      }
+    },
+    "bedrock_claude": {
+      "cost_bearing": true,
+      "cost_supplied": null,
+      "depth": 3,
+      "expected_providers": [
+        "bedrock",
+        "aws-bedrock",
+        "amazon-bedrock",
+        "anthropic"
+      ],
+      "id": "985dce7ccae0dda1",
+      "latency_ms_min": 400,
+      "level": "DEFAULT",
+      "metadata": {
+        "nested": {
+          "attempt": 1,
+          "region": "us-west-2"
+        },
+        "step": "bedrock_claude"
+      },
+      "model": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+      "model_parameters": {
+        "max_tokens": 512,
+        "temperature": 0.2
+      },
+      "name": "gen-bedrock_claude",
+      "parent": "llm_step",
+      "prompt": null,
+      "status_message": null,
+      "style": "manual",
+      "trace": "main",
+      "ttft_ms_min": 150,
+      "type": "GENERATION",
+      "usage": {
+        "input": 400,
+        "output": 50
+      }
+    },
+    "delete_me": {
+      "cost_bearing": true,
+      "cost_supplied": null,
+      "depth": 0,
+      "expected_providers": [
+        "openai"
+      ],
+      "id": "6f3c48d99fc9091c",
+      "model": "gpt-4o-mini",
+      "name": "gen-delete-me",
+      "parent": null,
+      "style": "manual",
+      "trace": "delete",
+      "type": "GENERATION",
+      "usage": {
+        "input": 10,
+        "output": 5
+      }
+    },
+    "embedding": {
+      "cost_bearing": true,
+      "cost_supplied": {
+        "total": 2.4e-05
+      },
+      "depth": 3,
+      "expected_providers": [
+        "openai"
+      ],
+      "id": "37e3593ce5154e06",
+      "model": "text-embedding-3-small",
+      "name": "embed-query",
+      "parent": "kb_retriever",
+      "trace": "main",
+      "type": "EMBEDDING",
+      "usage": {
+        "input": 1200
+      }
+    },
+    "error_call": {
+      "cost_bearing": true,
+      "cost_supplied": null,
+      "depth": 3,
+      "expected_providers": [
+        "openai"
+      ],
+      "id": "c91b73905cc19465",
+      "latency_ms_min": 400,
+      "level": "ERROR",
+      "metadata": {
+        "nested": {
+          "attempt": 1,
+          "region": "us-west-2"
+        },
+        "step": "error_call"
+      },
+      "model": "gpt-4o-mini",
+      "model_parameters": {
+        "max_tokens": 512,
+        "temperature": 0.2
+      },
+      "name": "gen-error_call",
+      "parent": "llm_step",
+      "prompt": null,
+      "status_message": "RateLimitError: 429 from upstream",
+      "style": "manual",
+      "trace": "main",
+      "ttft_ms_min": 150,
+      "type": "GENERATION",
+      "usage": {
+        "input": 100,
+        "output": 0
+      }
+    },
+    "gateway_openai": {
+      "cost_bearing": true,
+      "cost_supplied": {
+        "total": 0.00135
+      },
+      "depth": 3,
+      "expected_providers": [
+        "openai"
+      ],
+      "id": "5476ecfcd272f398",
+      "latency_ms_min": 400,
+      "level": "DEFAULT",
+      "metadata": {
+        "nested": {
+          "attempt": 1,
+          "region": "us-west-2"
+        },
+        "step": "gateway_openai"
+      },
+      "model": "openai/gpt-4o",
+      "model_parameters": {
+        "max_tokens": 512,
+        "temperature": 0.2
+      },
+      "name": "gen-gateway_openai",
+      "parent": "llm_step",
+      "prompt": null,
+      "status_message": null,
+      "style": "manual",
+      "trace": "main",
+      "ttft_ms_min": 150,
+      "type": "GENERATION",
+      "usage": {
+        "input": 300,
+        "output": 60
+      }
+    },
+    "kb_retriever": {
+      "depth": 2,
+      "id": "930d313b5153d068",
+      "name": "kb-retriever",
+      "parent": "plan_chain",
+      "trace": "main",
+      "type": "RETRIEVER"
+    },
+    "langchain_chain": {
+      "discovered": true,
+      "id": "127aaf08b9b8dd55",
+      "name": "conformance-langchain",
+      "parent": null,
+      "style": "langchain",
+      "trace": "langchain",
+      "type": "CHAIN"
+    },
+    "langchain_generation": {
+      "cost_bearing": true,
+      "discovered": true,
+      "expected_providers": [
+        "openai"
+      ],
+      "id": "58dd83d9847cbce7",
+      "model": "gpt-4o-mini-2024-07-18",
+      "name": "ChatOpenAI",
+      "parent": "langchain_chain",
+      "style": "langchain",
+      "trace": "langchain",
+      "type": "GENERATION",
+      "usage": {
+        "cache_read_tokens": 512,
+        "input_tokens": 700,
+        "output_tokens": 30
+      }
+    },
+    "llm_step": {
+      "depth": 2,
+      "id": "ca12db61422ad962",
+      "name": "llm-step",
+      "parent": "plan_chain",
+      "trace": "main",
+      "type": "SPAN"
+    },
+    "lookup_tool": {
+      "depth": 2,
+      "id": "3acd634d1620dab3",
+      "name": "lookup-tool",
+      "parent": "plan_chain",
+      "trace": "main",
+      "type": "TOOL"
+    },
+    "o4_mini": {
+      "cost_bearing": true,
+      "cost_supplied": null,
+      "depth": 3,
+      "expected_providers": [
+        "openai"
+      ],
+      "id": "b60e6aecb9f84bf0",
+      "latency_ms_min": 400,
+      "level": "DEFAULT",
+      "metadata": {
+        "nested": {
+          "attempt": 1,
+          "region": "us-west-2"
+        },
+        "step": "o4_mini"
+      },
+      "model": "o4-mini",
+      "model_parameters": {
+        "max_tokens": 512,
+        "temperature": 0.2
+      },
+      "name": "gen-o4_mini",
+      "parent": "llm_step",
+      "prompt": null,
+      "status_message": null,
+      "style": "manual",
+      "trace": "main",
+      "ttft_ms_min": 150,
+      "type": "GENERATION",
+      "usage": {
+        "input": 500,
+        "output": 300,
+        "output_reasoning_tokens": 200
+      }
+    },
+    "observe_generation": {
+      "cost_bearing": true,
+      "discovered": true,
+      "expected_providers": [
+        "openai"
+      ],
+      "id": "be12f10427427b89",
+      "model": "gpt-4o-mini-2024-07-18",
+      "name": "OpenAI-generation",
+      "parent": "observe_span",
+      "style": "observe+langfuse.openai",
+      "trace": "observe",
+      "type": "GENERATION",
+      "usage": {
+        "cache_read_tokens": 512,
+        "input_tokens": 700,
+        "output_tokens": 30
+      }
+    },
+    "observe_span": {
+      "discovered": true,
+      "id": "339bfa3c4d828a55",
+      "name": "observe-decorated",
+      "parent": null,
+      "style": "observe+langfuse.openai",
+      "trace": "observe",
+      "type": "SPAN"
+    },
+    "openai_cached_reasoning": {
+      "cost_bearing": true,
+      "cost_supplied": null,
+      "depth": 3,
+      "expected_providers": [
+        "openai"
+      ],
+      "id": "a5f2b78f6eedc308",
+      "latency_ms_min": 400,
+      "level": "DEFAULT",
+      "metadata": {
+        "nested": {
+          "attempt": 1,
+          "region": "us-west-2"
+        },
+        "step": "openai_cached_reasoning"
+      },
+      "model": "gpt-4o-mini",
+      "model_parameters": {
+        "max_tokens": 512,
+        "temperature": 0.2
+      },
+      "name": "gen-openai_cached_reasoning",
+      "parent": "llm_step",
+      "prompt": {
+        "name": "mg-conformance-prompt",
+        "version": 1
+      },
+      "status_message": null,
+      "style": "manual",
+      "trace": "main",
+      "ttft_ms_min": 150,
+      "type": "GENERATION",
+      "usage": {
+        "input": 900,
+        "input_cached_tokens": 600,
+        "output": 120,
+        "output_reasoning_tokens": 40
+      }
+    },
+    "plan_chain": {
+      "depth": 1,
+      "id": "80fdd884cc213178",
+      "name": "plan-chain",
+      "parent": "agent_root",
+      "trace": "main",
+      "type": "CHAIN"
+    },
+    "unknown_mistral": {
+      "cost_bearing": true,
+      "cost_supplied": {
+        "input": 0.0005,
+        "output": 0.00024,
+        "total": 0.00074
+      },
+      "depth": 3,
+      "expected_providers": [
+        "mistral",
+        "mistralai"
+      ],
+      "id": "8787d86de8cf8bac",
+      "latency_ms_min": 400,
+      "level": "DEFAULT",
+      "metadata": {
+        "nested": {
+          "attempt": 1,
+          "region": "us-west-2"
+        },
+        "step": "unknown_mistral"
+      },
+      "model": "mistral-large-latest",
+      "model_parameters": {
+        "max_tokens": 512,
+        "temperature": 0.2
+      },
+      "name": "gen-unknown_mistral",
+      "parent": "llm_step",
+      "prompt": null,
+      "status_message": null,
+      "style": "manual",
+      "trace": "main",
+      "ttft_ms_min": 150,
+      "type": "GENERATION",
+      "usage": {
+        "input": 250,
+        "output": 40
+      }
+    }
+  },
+  "prompt": {
+    "config": {
+      "model": "gpt-4o-mini",
+      "temperature": 0
+    },
+    "labels": [
+      "production"
+    ],
+    "name": "mg-conformance-prompt",
+    "version": 1
+  },
+  "release": "rel-2026.11.22",
+  "schema": "mg-langfuse-conformance-manifest/1",
+  "scores": [
+    {
+      "data_type": "NUMERIC",
+      "id": "mg-conformance-fixture-mg-helpfulness",
+      "name": "mg-helpfulness",
+      "target": "trace",
+      "trace_id": "23456a48a189ca76b6a9f57328c6c1f9",
+      "value": 0.8
+    },
+    {
+      "data_type": "BOOLEAN",
+      "id": "mg-conformance-fixture-mg-correct",
+      "name": "mg-correct",
+      "observation_id": "a5f2b78f6eedc308",
+      "target": "observation",
+      "trace_id": "23456a48a189ca76b6a9f57328c6c1f9",
+      "value": 1
+    },
+    {
+      "data_type": "CATEGORICAL",
+      "id": "mg-conformance-fixture-mg-category",
+      "name": "mg-category",
+      "observation_id": "a5f2b78f6eedc308",
+      "target": "observation",
+      "trace_id": "23456a48a189ca76b6a9f57328c6c1f9",
+      "value": "billing"
+    },
+    {
+      "data_type": "TEXT",
+      "id": "mg-conformance-fixture-mg-note",
+      "name": "mg-note",
+      "target": "trace",
+      "trace_id": "23456a48a189ca76b6a9f57328c6c1f9",
+      "value": "looks fine"
+    },
+    {
+      "data_type": "NUMERIC",
+      "id": "mg-conformance-fixture-mg-session-quality",
+      "name": "mg-session-quality",
+      "session_id": "bdf1a2b5b1d0dad7a8226cdfae1731fa32",
+      "target": "session",
+      "value": 4
+    }
+  ],
+  "scrubbed": {
+    "dropped": "^(scope\\.attributes\\.public_key|resourceAttributes\\.service\\.instance\\.id)$",
+    "epoch": "2026-01-01T00:00:00+00:00",
+    "ids": "sha256 of stable labels",
+    "tag": "mg-conformance-fixture"
+  },
+  "sdk_versions": {
+    "langchain-openai": "1.8.5",
+    "langfuse": "5.2.0",
+    "metergraph": "0.6.22",
+    "openai": "3.57.0"
+  },
+  "seeded_at": "2026-01-01T00:00:00+00:00",
+  "session_id": "bdf1a2b5b1d0dad7a8226cdfae1731fa32",
+  "tag": "mg-conformance-fixture",
+  "traces": {
+    "delete": {
+      "delete_after_first_import": true,
+      "id": "886d3f5236bfd2e175d96530e6ea2b54",
+      "name": "conformance-delete",
+      "tags": [
+        "mg-conformance-fixture",
+        "to-delete"
+      ]
+    },
+    "langchain": {
+      "expected_generations": 1,
+      "id": "edbfab4ba39e90abb5732115c94c9388",
+      "mock_usage": {
+        "cache_read_tokens": 512,
+        "input_tokens": 700,
+        "output_tokens": 30
+      },
+      "name": "conformance-langchain",
+      "style": "langchain",
+      "tags": [
+        "langchain",
+        "mg-conformance-fixture"
+      ]
+    },
+    "main": {
+      "id": "23456a48a189ca76b6a9f57328c6c1f9",
+      "metadata": {
+        "customer_tier": "gold",
+        "feature": "support-triage"
+      },
+      "name": "conformance-workflow",
+      "session_id": "bdf1a2b5b1d0dad7a8226cdfae1731fa32",
+      "style": "manual",
+      "tags": [
+        "mg-conformance-fixture",
+        "prod"
+      ],
+      "user_id": "user-conf-1",
+      "version": "app-v1.4.2"
+    },
+    "observe": {
+      "id": "e3ab5bba96a1a8ed84810bb01b0ce784",
+      "mock_usage": {
+        "cache_read_tokens": 512,
+        "input_tokens": 700,
+        "output_tokens": 30
+      },
+      "name": "conformance-observe",
+      "style": "observe+langfuse.openai",
+      "tags": [
+        "mg-conformance-fixture",
+        "observe"
+      ],
+      "user_id": "user-conf-2"
+    }
+  },
+  "version": "app-v1.4.2",
+  "with_metergraph_exporter": false
+}

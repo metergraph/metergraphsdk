@@ -4,6 +4,7 @@ import json
 import logging
 from datetime import datetime, timezone
 
+import pytest
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export import SpanExportResult
@@ -541,7 +542,7 @@ def _langfuse_attributes() -> dict:
     }
 
 
-def test_langfuse_generation_span_falls_back_to_langfuse_provider(monkeypatch):
+def test_langfuse_generation_span_resolves_provider_from_model(monkeypatch):
     rows = Rows()
     _capture.set_runtime(Runtime(rows, Options(app_root="")))
     monkeypatch.setattr(metergraph, "init", lambda: None)
@@ -551,7 +552,10 @@ def test_langfuse_generation_span_falls_back_to_langfuse_provider(monkeypatch):
 
     assert len(rows.rows) == 1
     row = rows.rows[0]
-    assert row["provider"] == "langfuse"
+    # Langfuse records no provider; the model name places it, never the
+    # telemetry vendor's name.
+    assert row["provider"] == "anthropic"
+    assert row["route"] == "synthetic-trace"
     assert row["model"] == "claude-opus-5"
     assert row["input_tokens"] == 11
     assert row["output_tokens"] == 4
@@ -651,7 +655,59 @@ def test_langfuse_error_level_marks_row_error(monkeypatch):
     row = rows.rows[0]
     assert row["status_code"] == "error"
     assert row["error"] is True
-    assert row["error_type"] == "OpenTelemetrySpanError"
+    # No exception name opens the message, so the type says where it came from.
+    assert row["error_type"] == "LangfuseObservationError"
+    assert "synthetic Langfuse failure" in row["response_text"]
+    _capture.set_runtime(None)
+
+
+def test_langfuse_unplaced_model_is_unknown_provider(monkeypatch):
+    rows = Rows()
+    _capture.set_runtime(Runtime(rows, Options(app_root="")))
+    monkeypatch.setattr(metergraph, "init", lambda: None)
+    attributes = _langfuse_attributes()
+    attributes["langfuse.observation.model.name"] = "in-house-model-7"
+
+    MetergraphGenAIExporter().export([_span(attributes)])
+
+    assert rows.rows[0]["provider"] == "unknown"
+    _capture.set_runtime(None)
+
+
+@pytest.mark.parametrize(
+    ("extra", "missing", "expected"),
+    [
+        # A prompt name is kept as tags, never the route.
+        (
+            {
+                "langfuse.observation.prompt.name": "triage",
+                "langfuse.observation.prompt.version": 3,
+                "gen_ai.prompt.name": "triage",
+            },
+            (),
+            ("synthetic-trace", "explicit"),
+        ),
+        # No trace name: the observation (span) name.
+        ({}, ("langfuse.trace.name",), ("chat claude-opus-5", "derived")),
+        # An explicit caller route still wins.
+        ({"metergraph.route": "billing"}, (), ("billing", "explicit")),
+    ],
+)
+def test_langfuse_route_is_the_trace_name(monkeypatch, extra, missing, expected):
+    rows = Rows()
+    _capture.set_runtime(Runtime(rows, Options(app_root="")))
+    monkeypatch.setattr(metergraph, "init", lambda: None)
+    attributes = {**_langfuse_attributes(), **extra}
+    for key in missing:
+        attributes.pop(key)
+
+    MetergraphGenAIExporter().export([_span(attributes)])
+
+    row = rows.rows[0]
+    assert (row["route"], row["route_source"]) == expected
+    if "langfuse.observation.prompt.name" in extra:
+        assert row["tags"]["langfuse.prompt.name"] == "triage"
+        assert row["tags"]["langfuse.prompt.version"] == "3"
     _capture.set_runtime(None)
 
 
@@ -824,3 +880,32 @@ def test_reliability_uses_standard_span_facts(monkeypatch):
         assert "otel" not in rows.rows[3]
     finally:
         _capture.set_runtime(None)
+
+
+def test_langfuse_release_and_environment_fall_back_to_the_resource(monkeypatch):
+    """Langfuse Python v3 records both on its Resource, not on each span."""
+    rows = Rows()
+    _capture.set_runtime(Runtime(rows, Options(app_root="", environment="from-init")))
+    monkeypatch.setattr(metergraph, "init", lambda: None)
+    span = _span(_langfuse_attributes())
+    span._resource = Resource.create(
+        {"langfuse.release": "r-resource", "langfuse.environment": "staging"}
+    )
+
+    MetergraphGenAIExporter().export([span])
+
+    row = rows.rows[0]
+    assert row["tags"]["langfuse.release"] == "r-resource"
+    assert row["environment"] == "staging"
+    _capture.set_runtime(None)
+
+
+def test_init_environment_applies_when_the_span_has_none(monkeypatch):
+    rows = Rows()
+    _capture.set_runtime(Runtime(rows, Options(app_root="", environment="from-init")))
+    monkeypatch.setattr(metergraph, "init", lambda: None)
+
+    MetergraphGenAIExporter().export([_span(_langfuse_attributes())])
+
+    assert rows.rows[0]["environment"] == "from-init"
+    _capture.set_runtime(None)
