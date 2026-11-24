@@ -81,6 +81,10 @@ class Writer:
 
     def _run(self) -> None:
         while not self._stop.is_set() or not self._queue.empty():
+            remaining = self._retry_at - time.monotonic()
+            if remaining > 0 and not self._stop.is_set():
+                self._stop.wait(min(remaining, 0.1))
+                continue
             try:
                 first = self._queue.get(timeout=min(self._flush_seconds, 0.1))
             except queue.Empty:

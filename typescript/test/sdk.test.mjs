@@ -1246,30 +1246,30 @@ test("transport 413 splits an oversized batch and delivers the pieces", async (t
   assert.equal(receivedBatches.filter((size) => size === 1).length, 4); // every row eventually delivered on its own
 });
 
-test("transport server error retries and is not fatal", async (t) => {
-  let attempts = 0;
-  const server = http.createServer((request, response) => {
-    request.resume();
-    attempts += 1;
-    response.writeHead(500);
+test("transport preserves queued rows during transient backoff", async (t) => {
+  const received = [];
+  const server = http.createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    received.push(JSON.parse(Buffer.concat(chunks).toString()));
+    response.writeHead(received.length === 1 ? 503 : 202);
     response.end();
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   t.after(() => new Promise((resolve) => server.close(resolve)));
-  const address = server.address();
-
-  const warnings = [];
-  const originalWarn = console.warn;
-  console.warn = (...args) => warnings.push(args.join(" "));
-  try {
-    const transport = new Transport("mg_test", `http://127.0.0.1:${address.port}`, { mode: "buffered" });
-    transport.enqueue({ payload: "one" });
-    await transport.flush(2000);
-  } finally {
-    console.warn = originalWarn;
-  }
-  assert.equal(attempts, 1);
-  assert.ok(warnings.some((w) => w.includes("HTTP 500")));
+  const transport = new Transport("mg_test", `http://127.0.0.1:${server.address().port}`, {
+    mode: "buffered", batchSize: 1,
+  });
+  t.after(() => transport.shutdown());
+  transport.enqueue({ index: 0 });
+  await transport.flush(2000);
+  transport.enqueue({ index: 1 });
+  transport.enqueue({ index: 2 });
+  assert.equal(await transport.flush(20), false);
+  assert.equal(received.length, 1);
+  assert.equal(await transport.flush(2000), true);
+  assert.deepEqual(received.flatMap((batch) => batch.rows), [{ index: 0 }, { index: 1 }, { index: 2 }]);
+  assert.equal(received.at(-1).meta.dropped, 1);
 });
 
 test("config poller stops polling and logs once on auth failure", async (t) => {
