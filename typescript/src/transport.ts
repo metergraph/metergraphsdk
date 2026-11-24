@@ -90,6 +90,11 @@ export class Transport {
     const deadline = Date.now() + Math.max(0, timeoutMs);
     const work = async () => {
       while (this.queue.length && Date.now() < deadline) {
+        const remaining = this.retryAt - Date.now();
+        if (remaining > 0) {
+          await new Promise((resolve) => setTimeout(resolve, Math.min(remaining, deadline - Date.now())));
+          continue;
+        }
         const batch = this.queue.splice(0, this.batchSize);
         await this.deliver(batch);
       }

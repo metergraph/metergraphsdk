@@ -1575,32 +1575,36 @@ def test_writer_413_splits_oversized_batch_and_delivers_the_pieces():
     assert writer._fatal is False
 
 
-def test_writer_server_error_retries_and_is_not_fatal(caplog):
-    attempts = []
+def test_writer_preserves_queued_rows_during_transient_backoff():
+    received = []
 
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
-            self.rfile.read(int(self.headers["Content-Length"]))
-            attempts.append(1)
-            self.send_response(500)
+            received.append(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
+            self.send_response(503 if len(received) == 1 else 202)
             self.end_headers()
 
         def log_message(self, *args):
             pass
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    writer = Writer("mg_test", f"http://127.0.0.1:{server.server_port}", flush_seconds=5)
-    with caplog.at_level(logging.WARNING, logger="metergraph"):
-        writer.enqueue({"payload": "one"})
-        writer.flush(2)
-    writer.shutdown()
-    server.shutdown()
-
-    assert len(attempts) == 1
-    assert writer._fatal is False
-    assert any("HTTP 500" in r.getMessage() for r in caplog.records)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    writer = Writer("mg_test", f"http://127.0.0.1:{server.server_port}", batch_size=1)
+    try:
+        writer.enqueue({"index": 0})
+        assert writer.flush(2)
+        writer.enqueue({"index": 1})
+        writer.enqueue({"index": 2})
+        assert writer.flush(0.05) is False
+        assert len(received) == 1
+        assert writer.flush(2)
+        assert [row for batch in received for row in batch["rows"]] == [
+            {"index": 0}, {"index": 1}, {"index": 2}]
+        assert writer.dropped == 1
+    finally:
+        writer.shutdown()
+        server.shutdown()
+        server.server_close()
 
 
 class _Dumpable:
